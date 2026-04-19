@@ -4,6 +4,7 @@ import type { Debtor, Payment, AppState, DebtSummary, LoanAddition } from "@/typ
 import {
   calculateInterest,
   calculateTotalRounds,
+  calculateDueDate,
 } from "@/lib/calculator";
 
 const STORAGE_KEY = "rubsap_data";
@@ -27,7 +28,7 @@ export function saveState(state: AppState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-// ── Debtors ──────────────────────────────────────────────────────────────────
+// ── Debtors ───────────────────────────────────────────────────────────────────
 
 export function getDebtors(): Debtor[] {
   return loadState().debtors.map(normalize);
@@ -57,12 +58,12 @@ export function deleteDebtor(id: string): void {
   saveState(state);
 }
 
-// ── Add more loan (เพิ่มยอดกู้) ──────────────────────────────────────────────
+// ── เพิ่มยอดกู้ ───────────────────────────────────────────────────────────────
+// วันครบกำหนดถูกคำนวณอัตโนมัติจาก startDate + rounds × period
 
 export function addMoreLoan(
   debtorId: string,
   additionalAmount: number,
-  newDueDate: string,
   newPaymentPerRound: number,
   notes?: string
 ): void {
@@ -80,13 +81,15 @@ export function addMoreLoan(
 
   const { totalInterest, totalAmount } = calculateInterest(
     newPrincipal,
-    debtor.interestRate,
-    newStartDate,
-    newDueDate,
-    debtor.interestPeriod
+    debtor.interestRate
   );
 
   const totalRounds = calculateTotalRounds(totalAmount, newPaymentPerRound);
+  const newDueDate = calculateDueDate(
+    newStartDate,
+    totalRounds,
+    debtor.interestPeriod
+  );
 
   const addition: LoanAddition = {
     id: crypto.randomUUID(),
@@ -113,7 +116,7 @@ export function addMoreLoan(
   saveState(state);
 }
 
-// ── Payments ─────────────────────────────────────────────────────────────────
+// ── Payments ──────────────────────────────────────────────────────────────────
 
 export function getPayments(debtorId?: string): Payment[] {
   const payments = loadState().payments;

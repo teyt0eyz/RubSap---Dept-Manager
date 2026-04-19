@@ -6,22 +6,20 @@ import Link from "next/link";
 import {
   ChevronLeft, Edit2, Trash2, Plus, DollarSign,
   Calendar, Percent, Clock, CheckCircle2, AlertTriangle,
-  Minus, RefreshCw, PlusCircle,
+  Minus, RefreshCw, PlusCircle, CalendarCheck,
 } from "lucide-react";
 import {
   formatCurrency, formatDate, getPeriodLabel,
   isOverdue, daysUntilDue,
   calculateRoundsPaid, calculateRoundsRemaining,
   calculateTotalRounds, getNextPaymentAmount,
-  getNextPaymentDate, calculateInterest,
+  getNextPaymentDate, calculateInterest, calculateDueDate,
 } from "@/lib/calculator";
 import {
   getDebtor, deleteDebtor, addPayment, getPayments,
   deletePayment, addMoreLoan,
 } from "@/lib/store";
-import type { Debtor, Payment, InterestPeriod } from "@/types";
-
-const PERIODS: InterestPeriod[] = ["daily", "weekly", "biweekly", "monthly"];
+import type { Debtor, Payment } from "@/types";
 
 export default function DebtorDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,7 +27,7 @@ export default function DebtorDetailPage() {
   const [debtor, setDebtor] = useState<Debtor | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
 
-  // Add Payment state
+  // Payment state
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payNote, setPayNote] = useState("");
@@ -38,7 +36,6 @@ export default function DebtorDetailPage() {
   // Add More Loan state
   const [showAddLoan, setShowAddLoan] = useState(false);
   const [addAmount, setAddAmount] = useState("");
-  const [addDueDate, setAddDueDate] = useState("");
   const [addPPR, setAddPPR] = useState("");
   const [addNote, setAddNote] = useState("");
   const [addError, setAddError] = useState("");
@@ -48,46 +45,42 @@ export default function DebtorDetailPage() {
     totalAmount: number;
     totalRounds: number;
     lastRoundAmount: number;
+    newDueDate: string;
   } | null>(null);
 
-  // Delete state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   function reload() {
     const d = getDebtor(id);
     if (d) {
       setDebtor(d);
-      setAddDueDate(d.dueDate);
       setAddPPR(String(d.paymentPerRound));
-      setPayments(
-        getPayments(id).sort((a, b) => b.date.localeCompare(a.date))
-      );
+      setPayments(getPayments(id).sort((a, b) => b.date.localeCompare(a.date)));
     }
   }
 
   useEffect(() => { reload(); }, [id]);
 
-  // Live preview for adding more loan
+  // Live preview for addMoreLoan — due date auto-calculated
   useEffect(() => {
     if (!debtor) return;
     const extra = parseFloat(addAmount);
     const ppr = parseFloat(addPPR);
-    if (!isNaN(extra) && extra > 0 && addDueDate && !isNaN(ppr) && ppr > 0) {
+    if (!isNaN(extra) && extra > 0 && !isNaN(ppr) && ppr > 0) {
       const balance = parseFloat((debtor.totalAmount - debtor.amountPaid).toFixed(2));
       const newPrincipal = parseFloat((balance + extra).toFixed(2));
       const today = new Date().toISOString().split("T")[0];
-      const { totalInterest, totalAmount } = calculateInterest(
-        newPrincipal, debtor.interestRate, today, addDueDate, debtor.interestPeriod
-      );
+      const { totalInterest, totalAmount } = calculateInterest(newPrincipal, debtor.interestRate);
       const totalRounds = calculateTotalRounds(totalAmount, ppr);
+      const newDueDate = calculateDueDate(today, totalRounds, debtor.interestPeriod);
       const lastRoundAmount = parseFloat(
         (totalAmount - (totalRounds - 1) * ppr).toFixed(2)
       );
-      setAddPreview({ newPrincipal, totalInterest, totalAmount, totalRounds, lastRoundAmount });
+      setAddPreview({ newPrincipal, totalInterest, totalAmount, totalRounds, lastRoundAmount, newDueDate });
     } else {
       setAddPreview(null);
     }
-  }, [addAmount, addDueDate, addPPR, debtor]);
+  }, [addAmount, addPPR, debtor]);
 
   if (!debtor) {
     return (
@@ -111,39 +104,23 @@ export default function DebtorDetailPage() {
   const nextPayAmt = getNextPaymentAmount(balance, debtor.paymentPerRound);
   const nextPayDate = paid ? null : getNextPaymentDate(debtor.startDate, roundsPaid, debtor.interestPeriod);
 
+  // Per-round net amount for display
+  const lastRoundAmt = parseFloat(
+    (debtor.totalAmount - (debtor.totalRounds - 1) * debtor.paymentPerRound).toFixed(2)
+  );
+
   function handleAddPayment(e: React.FormEvent) {
     e.preventDefault();
     const amount = parseFloat(payAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setPayError("กรุณาใส่จำนวนเงินที่ถูกต้อง");
-      return;
-    }
-    if (amount > balance + 0.01) {
-      setPayError(`จำนวนสูงสุดที่รับได้ ${formatCurrency(balance)}`);
-      return;
-    }
-    addPayment({
-      id: crypto.randomUUID(),
-      debtorId: id,
-      amount: parseFloat(amount.toFixed(2)),
-      date: new Date().toISOString(),
-      notes: payNote.trim() || undefined,
-    });
-    setPayAmount("");
-    setPayNote("");
-    setPayError("");
-    setShowAddPayment(false);
+    if (isNaN(amount) || amount <= 0) { setPayError("กรุณาใส่จำนวนเงินที่ถูกต้อง"); return; }
+    if (amount > balance + 0.01) { setPayError(`จำนวนสูงสุดที่รับได้ ${formatCurrency(balance)}`); return; }
+    addPayment({ id: crypto.randomUUID(), debtorId: id, amount: parseFloat(amount.toFixed(2)), date: new Date().toISOString(), notes: payNote.trim() || undefined });
+    setPayAmount(""); setPayNote(""); setPayError(""); setShowAddPayment(false);
     reload();
   }
 
   function handleQuickPay() {
-    addPayment({
-      id: crypto.randomUUID(),
-      debtorId: id,
-      amount: nextPayAmt,
-      date: new Date().toISOString(),
-      notes: `รอบที่ ${roundsPaid + 1}`,
-    });
+    addPayment({ id: crypto.randomUUID(), debtorId: id, amount: nextPayAmt, date: new Date().toISOString(), notes: `รอบที่ ${roundsPaid + 1}` });
     reload();
   }
 
@@ -151,30 +128,11 @@ export default function DebtorDetailPage() {
     e.preventDefault();
     const extra = parseFloat(addAmount);
     const ppr = parseFloat(addPPR);
-    if (isNaN(extra) || extra <= 0) {
-      setAddError("กรุณาใส่จำนวนเงินที่ถูกต้อง");
-      return;
-    }
-    if (!addDueDate) {
-      setAddError("กรุณาเลือกวันครบกำหนด");
-      return;
-    }
-    if (isNaN(ppr) || ppr <= 0) {
-      setAddError("กรุณาใส่จำนวนเงินเก็บต่อรอบ");
-      return;
-    }
-    addMoreLoan(id, extra, addDueDate, ppr, addNote.trim() || undefined);
-    setAddAmount("");
-    setAddNote("");
-    setAddError("");
-    setShowAddLoan(false);
-    setAddPreview(null);
+    if (isNaN(extra) || extra <= 0) { setAddError("กรุณาใส่จำนวนเงินที่ถูกต้อง"); return; }
+    if (isNaN(ppr) || ppr <= 0) { setAddError("กรุณาใส่จำนวนเงินเก็บต่อรอบ"); return; }
+    addMoreLoan(id, extra, ppr, addNote.trim() || undefined);
+    setAddAmount(""); setAddNote(""); setAddError(""); setShowAddLoan(false); setAddPreview(null);
     reload();
-  }
-
-  function handleDelete() {
-    deleteDebtor(id);
-    router.push("/debtors");
   }
 
   const statusBg = paid ? "bg-green-600" : overdue ? "bg-red-600" : "bg-blue-600";
@@ -188,21 +146,13 @@ export default function DebtorDetailPage() {
             <Link href="/debtors" className="p-2 rounded-xl hover:bg-blue-50 transition-colors">
               <ChevronLeft size={26} className="text-blue-700" />
             </Link>
-            <h1 className="text-xl font-bold text-blue-800 truncate max-w-[160px]">
-              {debtor.name}
-            </h1>
+            <h1 className="text-xl font-bold text-blue-800 truncate max-w-[160px]">{debtor.name}</h1>
           </div>
           <div className="flex gap-2">
-            <Link
-              href={`/add-debt?edit=${id}`}
-              className="p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors"
-            >
+            <Link href={`/add-debt?edit=${id}`} className="p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors">
               <Edit2 size={20} className="text-blue-600" />
             </Link>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-2.5 rounded-xl bg-red-50 hover:bg-red-100 transition-colors"
-            >
+            <button onClick={() => setShowDeleteConfirm(true)} className="p-2.5 rounded-xl bg-red-50 hover:bg-red-100 transition-colors">
               <Trash2 size={20} className="text-red-500" />
             </button>
           </div>
@@ -214,81 +164,89 @@ export default function DebtorDetailPage() {
         {/* Status Banner */}
         <div className={`${statusBg} text-white rounded-2xl p-5 shadow-md`}>
           <div className="flex items-center gap-2 mb-1">
-            {paid
-              ? <CheckCircle2 size={22} />
-              : overdue
-              ? <AlertTriangle size={22} />
-              : <Clock size={22} />
-            }
+            {paid ? <CheckCircle2 size={22} /> : overdue ? <AlertTriangle size={22} /> : <Clock size={22} />}
             <span className="text-lg font-bold">
-              {paid
-                ? "ชำระครบแล้ว"
-                : overdue
-                ? `เกินกำหนด ${Math.abs(days)} วัน`
-                : days === 0 ? "ครบกำหนดวันนี้!" : `อีก ${days} วันครบกำหนด`}
+              {paid ? "ชำระครบแล้ว"
+                : overdue ? `เกินกำหนด ${Math.abs(days)} วัน`
+                : days === 0 ? "ครบกำหนดวันนี้!"
+                : `อีก ${days} วันครบกำหนด`}
             </span>
           </div>
           <p className="text-3xl font-extrabold mt-2">
             {paid ? formatCurrency(debtor.totalAmount) : formatCurrency(balance)}
           </p>
-          <p className="text-sm opacity-80 mt-1">
-            {paid ? "ยอดรวมที่เก็บได้" : "ยอดคงเหลือ"}
-          </p>
+          <p className="text-sm opacity-80 mt-1">{paid ? "ยอดรวมที่เก็บได้" : "ยอดคงเหลือ"}</p>
           <div className="mt-4">
             <div className="flex justify-between text-sm mb-1 opacity-90">
               <span>ชำระแล้ว {formatCurrency(debtor.amountPaid)}</span>
               <span>{progress}%</span>
             </div>
             <div className="h-3 bg-white/30 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-white rounded-full transition-all"
-                style={{ width: `${progress}%` }}
-              />
+              <div className="h-full bg-white rounded-full transition-all" style={{ width: `${progress}%` }} />
             </div>
           </div>
         </div>
 
-        {/* ตารางการชำระ (Round Schedule) */}
+        {/* ตารางการทวง */}
         {!paid && (
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
             <h2 className="text-base font-bold text-gray-700 mb-3 flex items-center gap-2">
-              <Calendar size={18} className="text-blue-500" />
-              ตารางการชำระ ({getPeriodLabel(debtor.interestPeriod)})
+              <CalendarCheck size={18} className="text-blue-500" />
+              ตารางการทวง ({getPeriodLabel(debtor.interestPeriod)})
             </h2>
 
+            {/* Round counters */}
             <div className="grid grid-cols-3 gap-2 mb-4">
               <RoundBox label="จ่ายไปแล้ว" value={`${roundsPaid} รอบ`} color="green" />
-              <RoundBox label="เหลืออีก" value={`${roundsRemaining} รอบ`} color="amber" />
-              <RoundBox label="ทั้งหมด" value={`${debtor.totalRounds} รอบ`} color="blue" />
+              <RoundBox label="เหลืออีก"   value={`${roundsRemaining} รอบ`} color="amber" />
+              <RoundBox label="ทั้งหมด"    value={`${debtor.totalRounds} รอบ`} color="blue" />
             </div>
 
-            {/* Progress rounds */}
+            {/* Visual round tracker */}
             <div className="flex gap-1 flex-wrap mb-4">
               {Array.from({ length: debtor.totalRounds }).map((_, i) => (
                 <div
                   key={i}
                   className={`h-3 rounded-full transition-colors ${
-                    i < roundsPaid
-                      ? "bg-green-500"
-                      : i === roundsPaid
-                      ? "bg-amber-400 animate-pulse"
-                      : "bg-gray-200"
+                    i < roundsPaid ? "bg-green-500"
+                    : i === roundsPaid ? "bg-amber-400 animate-pulse"
+                    : "bg-gray-200"
                   }`}
-                  style={{ width: `${Math.max(4, Math.floor(100 / Math.max(debtor.totalRounds, 1)) - 1)}%` }}
+                  style={{ width: `${Math.max(4, Math.floor(96 / Math.max(debtor.totalRounds, 1)) - 1)}%` }}
                   title={`รอบที่ ${i + 1}`}
                 />
               ))}
             </div>
 
-            {/* Next payment info */}
+            {/* Per-round net amount info */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-3 space-y-1.5 text-sm">
+              <p className="font-bold text-gray-600 mb-1">จำนวนสุทธิต่อรอบ (รวมดอกเบี้ยแล้ว)</p>
+              {debtor.totalRounds > 1 ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">รอบที่ 1 – {debtor.totalRounds - 1}</span>
+                    <span className="font-bold text-blue-700">{formatCurrency(debtor.paymentPerRound)} / รอบ</span>
+                  </div>
+                  <div className="flex justify-between border-t border-gray-200 pt-1.5">
+                    <span className="text-gray-500">รอบที่ {debtor.totalRounds} (สุดท้าย)</span>
+                    <span className="font-bold text-green-700">{formatCurrency(lastRoundAmt)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">รอบเดียว</span>
+                  <span className="font-bold text-blue-700">{formatCurrency(debtor.totalAmount)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Next payment */}
             <div className="bg-blue-50 rounded-xl p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-blue-700">
                   รอบที่ {roundsPaid + 1} (ถัดไป)
                 </span>
-                <span className="text-lg font-extrabold text-blue-800">
-                  {formatCurrency(nextPayAmt)}
-                </span>
+                <span className="text-lg font-extrabold text-blue-800">{formatCurrency(nextPayAmt)}</span>
               </div>
               {nextPayDate && (
                 <div className="flex items-center justify-between text-sm text-blue-600">
@@ -303,13 +261,13 @@ export default function DebtorDetailPage() {
               )}
             </div>
 
-            {/* Quick Pay Button */}
+            {/* Quick Pay */}
             <button
               onClick={handleQuickPay}
-              className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-colors"
+              className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-colors"
             >
               <CheckCircle2 size={20} />
-              รับเงิน {formatCurrency(nextPayAmt)} (รอบที่ {roundsPaid + 1})
+              รับเงิน {formatCurrency(nextPayAmt)} — รอบที่ {roundsPaid + 1}
             </button>
           </div>
         )}
@@ -317,13 +275,14 @@ export default function DebtorDetailPage() {
         {/* รายละเอียดเงินกู้ */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100 space-y-3">
           <h2 className="text-base font-bold text-gray-700 mb-1">รายละเอียดเงินกู้</h2>
-          <DetailRow icon={<DollarSign size={18} className="text-blue-500" />}   label="เงินต้น"          value={formatCurrency(debtor.principalAmount)} />
-          <DetailRow icon={<Percent size={18} className="text-purple-500" />}     label="อัตราดอกเบี้ย"   value={`${debtor.interestRate}% ${getPeriodLabel(debtor.interestPeriod)}`} />
-          <DetailRow icon={<DollarSign size={18} className="text-amber-500" />}   label="ดอกเบี้ยรวม"     value={formatCurrency(debtor.totalInterest)} />
-          <DetailRow icon={<DollarSign size={18} className="text-green-500" />}   label="ยอดรวมทั้งหมด"  value={formatCurrency(debtor.totalAmount)} />
-          <DetailRow icon={<RefreshCw size={18} className="text-blue-400" />}     label="เก็บต่อรอบ"      value={formatCurrency(debtor.paymentPerRound)} />
-          <DetailRow icon={<Calendar size={18} className="text-blue-500" />}      label="วันที่เริ่มต้น"  value={formatDate(debtor.startDate)} />
-          <DetailRow icon={<Calendar size={18} className="text-red-500" />}       label="วันครบกำหนด"     value={formatDate(debtor.dueDate)} />
+          <DRow icon={<DollarSign size={18} className="text-blue-500" />}   label="เงินต้น"           value={formatCurrency(debtor.principalAmount)} />
+          <DRow icon={<Percent size={18} className="text-purple-500" />}    label="อัตราดอกเบี้ย"    value={`${debtor.interestRate}% ของเงินต้น`} />
+          <DRow icon={<DollarSign size={18} className="text-amber-500" />}  label="ดอกเบี้ยรวม"      value={formatCurrency(debtor.totalInterest)} />
+          <DRow icon={<DollarSign size={18} className="text-green-500" />}  label="ยอดรวมทั้งหมด"   value={formatCurrency(debtor.totalAmount)} />
+          <DRow icon={<RefreshCw size={18} className="text-blue-400" />}    label="เก็บต่อรอบ"       value={formatCurrency(debtor.paymentPerRound)} />
+          <DRow icon={<CalendarCheck size={18} className="text-blue-500" />} label="วิธีการทวง"      value={getPeriodLabel(debtor.interestPeriod)} />
+          <DRow icon={<Calendar size={18} className="text-blue-500" />}     label="วันที่เริ่มต้น"   value={formatDate(debtor.startDate)} />
+          <DRow icon={<Calendar size={18} className="text-red-500" />}      label="วันครบกำหนด"      value={formatDate(debtor.dueDate)} />
           {debtor.notes && (
             <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-600 border border-gray-200 mt-2">
               📝 {debtor.notes}
@@ -343,87 +302,88 @@ export default function DebtorDetailPage() {
                 เพิ่มยอดกู้ (ยืมเพิ่ม)
               </span>
               <span className="text-sm text-gray-400 font-normal">
-                ยอดคงเหลือ {formatCurrency(balance)}
+                ค้างอยู่ {formatCurrency(balance)}
               </span>
             </button>
 
             {showAddLoan && (
-              <form
-                onSubmit={handleAddMoreLoan}
-                className="px-4 pb-4 border-t border-orange-100 pt-3 space-y-3"
-              >
+              <form onSubmit={handleAddMoreLoan} className="px-4 pb-4 border-t border-orange-100 pt-3 space-y-3">
                 <p className="text-sm text-orange-700 bg-orange-50 rounded-xl p-3 font-medium">
-                  ยอดที่ค้างอยู่ <strong>{formatCurrency(balance)}</strong> จะถูกรวมกับเงินที่ยืมเพิ่ม
-                  แล้วคำนวณดอกเบี้ยใหม่ทั้งหมด
+                  ยอดค้าง <strong>{formatCurrency(balance)}</strong> + เงินที่ยืมเพิ่ม
+                  = เงินต้นใหม่ คิดดอกเบี้ย {debtor.interestRate}% ใหม่ทั้งหมด
+                  และคำนวณวันครบกำหนดให้อัตโนมัติ
                 </p>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-600 mb-1">
-                    ยืมเพิ่มอีก (฿) *
-                  </label>
+                  <label className="block text-sm font-bold text-gray-600 mb-1">ยืมเพิ่มอีก (฿) *</label>
                   <input
                     type="number" inputMode="decimal"
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-lg font-medium focus:outline-none focus:border-orange-400"
-                    placeholder="0.00"
-                    value={addAmount}
+                    placeholder="0.00" value={addAmount}
                     onChange={(e) => { setAddAmount(e.target.value); setAddError(""); }}
                     min="0.01" step="0.01"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-600 mb-1">
-                    วันครบกำหนดใหม่ *
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-lg font-medium focus:outline-none focus:border-orange-400"
-                    value={addDueDate}
-                    onChange={(e) => { setAddDueDate(e.target.value); setAddError(""); }}
-                    min={new Date().toISOString().split("T")[0]}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-gray-600 mb-1">
-                    เก็บเงินต่อรอบ (฿) *
-                  </label>
+                  <label className="block text-sm font-bold text-gray-600 mb-1">เก็บเงินต่อรอบ (฿) *</label>
                   <input
                     type="number" inputMode="decimal"
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-lg font-medium focus:outline-none focus:border-orange-400"
-                    placeholder="0.00"
-                    value={addPPR}
+                    placeholder="0.00" value={addPPR}
                     onChange={(e) => { setAddPPR(e.target.value); setAddError(""); }}
                     min="0.01" step="0.01"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-600 mb-1">
-                    หมายเหตุ (ถ้ามี)
-                  </label>
+                  <label className="block text-sm font-bold text-gray-600 mb-1">หมายเหตุ (ถ้ามี)</label>
                   <input
                     type="text"
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-orange-400"
                     placeholder="เช่น ยืมเพิ่มเพื่อซื้อของ"
-                    value={addNote}
-                    onChange={(e) => setAddNote(e.target.value)}
+                    value={addNote} onChange={(e) => setAddNote(e.target.value)}
                   />
                 </div>
 
-                {addError && (
-                  <p className="text-red-500 text-sm">{addError}</p>
-                )}
+                {addError && <p className="text-red-500 text-sm">{addError}</p>}
 
                 {/* Preview */}
                 {addPreview && (
                   <div className="bg-orange-500 text-white rounded-xl p-4 space-y-2">
                     <p className="font-bold text-sm mb-2">ตัวอย่างการคำนวณใหม่</p>
-                    <PreviewRow label="เงินต้นใหม่" value={formatCurrency(addPreview.newPrincipal)} />
-                    <PreviewRow label="ดอกเบี้ยใหม่" value={formatCurrency(addPreview.totalInterest)} />
-                    <div className="h-px bg-orange-400 my-1" />
-                    <PreviewRow label="ยอดรวมใหม่" value={formatCurrency(addPreview.totalAmount)} bold />
-                    <PreviewRow label="จำนวนรอบ" value={`${addPreview.totalRounds} รอบ`} bold />
+                    <APRow label="เงินต้นใหม่"   value={formatCurrency(addPreview.newPrincipal)} />
+                    <APRow label={`ดอกเบี้ย ${debtor.interestRate}%`} value={formatCurrency(addPreview.totalInterest)} />
+                    <div className="h-px bg-orange-400" />
+                    <APRow label="ยอดรวมใหม่"   value={formatCurrency(addPreview.totalAmount)} bold />
+                    <APRow label="จำนวนรอบ"     value={`${addPreview.totalRounds} รอบ`} bold />
+                    <div className="bg-orange-400/40 rounded-xl p-2.5 space-y-1.5 text-sm">
+                      {addPreview.totalRounds > 1 ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-orange-100">รอบที่ 1 – {addPreview.totalRounds - 1}</span>
+                            <span className="font-bold">{formatCurrency(parseFloat(addPPR))} / รอบ</span>
+                          </div>
+                          <div className="flex justify-between border-t border-orange-400/50 pt-1.5">
+                            <span className="text-orange-100">รอบสุดท้าย</span>
+                            <span className="font-extrabold text-yellow-300">{formatCurrency(addPreview.lastRoundAmount)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between">
+                          <span className="text-orange-100">รอบเดียว</span>
+                          <span className="font-bold">{formatCurrency(addPreview.totalAmount)}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between bg-green-500/30 rounded-xl px-3 py-2 mt-1">
+                      <span className="text-sm font-semibold flex items-center gap-1">
+                        <CalendarCheck size={14} /> วันครบกำหนดใหม่
+                      </span>
+                      <span className="font-extrabold text-yellow-300">
+                        {formatDate(addPreview.newDueDate)}
+                      </span>
+                    </div>
                   </div>
                 )}
 
@@ -447,7 +407,7 @@ export default function DebtorDetailPage() {
           </div>
         )}
 
-        {/* บันทึกการชำระ (Manual) */}
+        {/* บันทึกชำระ (manual) */}
         {!paid && (
           <div className="bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
             <button
@@ -456,53 +416,38 @@ export default function DebtorDetailPage() {
             >
               <span className="flex items-center gap-2">
                 <Plus size={20} />
-                บันทึกการชำระเงิน (จำนวนอื่น)
+                บันทึกชำระเงิน (จำนวนอื่น)
               </span>
             </button>
-
             {showAddPayment && (
-              <form
-                onSubmit={handleAddPayment}
-                className="px-4 pb-4 border-t border-blue-100 pt-3 space-y-3"
-              >
+              <form onSubmit={handleAddPayment} className="px-4 pb-4 border-t border-blue-100 pt-3 space-y-3">
                 <div>
-                  <label className="block text-sm font-bold text-gray-600 mb-1">
-                    จำนวนเงิน (฿)
-                  </label>
+                  <label className="block text-sm font-bold text-gray-600 mb-1">จำนวนเงิน (฿)</label>
                   <input
                     type="number" inputMode="decimal"
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-lg font-medium focus:outline-none focus:border-blue-400"
-                    placeholder="0.00"
-                    value={payAmount}
+                    placeholder="0.00" value={payAmount}
                     onChange={(e) => { setPayAmount(e.target.value); setPayError(""); }}
                     min="0.01" step="0.01" autoFocus
                   />
                   {payError && <p className="text-red-500 text-sm mt-1">{payError}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-600 mb-1">
-                    หมายเหตุ (ถ้ามี)
-                  </label>
+                  <label className="block text-sm font-bold text-gray-600 mb-1">หมายเหตุ (ถ้ามี)</label>
                   <input
                     type="text"
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-blue-400"
                     placeholder="เช่น ชำระบางส่วน"
-                    value={payNote}
-                    onChange={(e) => setPayNote(e.target.value)}
+                    value={payNote} onChange={(e) => setPayNote(e.target.value)}
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddPayment(false)}
-                    className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-bold hover:bg-gray-50"
-                  >
+                  <button type="button" onClick={() => setShowAddPayment(false)}
+                    className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-bold hover:bg-gray-50">
                     ยกเลิก
                   </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700"
-                  >
+                  <button type="submit"
+                    className="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700">
                     บันทึกการชำระ
                   </button>
                 </div>
@@ -511,30 +456,23 @@ export default function DebtorDetailPage() {
           </div>
         )}
 
-        {/* ประวัติการชำระเงิน */}
+        {/* ประวัติการชำระ */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
           <h2 className="text-base font-bold text-gray-700 mb-3">
             ประวัติการชำระเงิน ({payments.length})
           </h2>
           {payments.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-4">
-              ยังไม่มีประวัติการชำระเงิน
-            </p>
+            <p className="text-gray-400 text-sm text-center py-4">ยังไม่มีประวัติการชำระเงิน</p>
           ) : (
             payments.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-              >
+              <div key={p.id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
                     <DollarSign size={16} className="text-green-600" />
                   </div>
                   <div>
                     <p className="font-bold text-gray-800">{formatCurrency(p.amount)}</p>
-                    <p className="text-xs text-gray-400">
-                      {formatDate(p.date)}{p.notes ? ` · ${p.notes}` : ""}
-                    </p>
+                    <p className="text-xs text-gray-400">{formatDate(p.date)}{p.notes ? ` · ${p.notes}` : ""}</p>
                   </div>
                 </div>
                 <button
@@ -556,18 +494,12 @@ export default function DebtorDetailPage() {
               ประวัติการเพิ่มยอดกู้ ({debtor.loanAdditions.length})
             </h2>
             {debtor.loanAdditions.map((a) => (
-              <div
-                key={a.id}
-                className="py-3 border-b border-gray-100 last:border-0"
-              >
+              <div key={a.id} className="py-3 border-b border-gray-100 last:border-0">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="font-bold text-orange-700">
-                      +{formatCurrency(a.additionalAmount)}
-                    </p>
+                    <p className="font-bold text-orange-700">+{formatCurrency(a.additionalAmount)}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {formatDate(a.date)}
-                      {a.notes ? ` · ${a.notes}` : ""}
+                      {formatDate(a.date)}{a.notes ? ` · ${a.notes}` : ""}
                     </p>
                   </div>
                   <div className="text-right text-xs text-gray-500">
@@ -590,16 +522,12 @@ export default function DebtorDetailPage() {
               การลบนี้จะลบ <strong>{debtor.name}</strong> และประวัติการชำระเงินทั้งหมดอย่างถาวร
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-lg hover:bg-gray-50"
-              >
+              <button onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-lg hover:bg-gray-50">
                 ยกเลิก
               </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 py-3.5 rounded-xl bg-red-600 text-white font-bold text-lg hover:bg-red-700"
-              >
+              <button onClick={() => { deleteDebtor(id); router.push("/debtors"); }}
+                className="flex-1 py-3.5 rounded-xl bg-red-600 text-white font-bold text-lg hover:bg-red-700">
                 ลบ
               </button>
             </div>
@@ -612,7 +540,7 @@ export default function DebtorDetailPage() {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function DRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2 text-gray-500">
@@ -625,26 +553,20 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
 }
 
 function RoundBox({ label, value, color }: { label: string; value: string; color: "green" | "amber" | "blue" }) {
-  const colors = {
-    green: "bg-green-50 text-green-700 border-green-200",
-    amber: "bg-amber-50 text-amber-700 border-amber-200",
-    blue:  "bg-blue-50  text-blue-700  border-blue-200",
-  };
+  const cls = { green: "bg-green-50 text-green-700 border-green-200", amber: "bg-amber-50 text-amber-700 border-amber-200", blue: "bg-blue-50 text-blue-700 border-blue-200" };
   return (
-    <div className={`rounded-xl p-3 border-2 text-center ${colors[color]}`}>
+    <div className={`rounded-xl p-3 border-2 text-center ${cls[color]}`}>
       <p className="text-xs font-semibold opacity-70">{label}</p>
       <p className="text-lg font-extrabold mt-0.5">{value}</p>
     </div>
   );
 }
 
-function PreviewRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function APRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <div className="flex justify-between items-center">
       <span className="text-orange-100 text-sm">{label}</span>
-      <span className={`${bold ? "text-white font-extrabold text-base" : "text-white font-bold text-sm"}`}>
-        {value}
-      </span>
+      <span className={bold ? "text-white font-extrabold text-base" : "text-white font-bold text-sm"}>{value}</span>
     </div>
   );
 }

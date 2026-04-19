@@ -1,43 +1,18 @@
 import type { InterestPeriod } from "@/types";
 
-// ── Interest ──────────────────────────────────────────────────────────────────
+// ── Interest (flat, one-time on principal) ────────────────────────────────────
+// ดอกเบี้ยคิดจากเงินต้นครั้งเดียว ไม่ใช่รายวัน/เดือน
 
 export function calculateInterest(
   principal: number,
-  ratePercent: number,
-  startDate: string,
-  dueDate: string,
-  period: InterestPeriod
+  ratePercent: number
 ): { totalInterest: number; totalAmount: number } {
-  const start = new Date(startDate);
-  const end = new Date(dueDate);
-  const diffMs = end.getTime() - start.getTime();
-
-  if (diffMs <= 0 || isNaN(diffMs)) {
-    return { totalInterest: 0, totalAmount: principal };
-  }
-
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-  const rate = ratePercent / 100;
-
-  let periods = 0;
-  switch (period) {
-    case "daily":    periods = diffDays;      break;
-    case "weekly":   periods = diffDays / 7;  break;
-    case "biweekly": periods = diffDays / 15; break;
-    case "monthly":  periods = diffDays / 30; break;
-  }
-
-  const totalInterest = principal * rate * periods;
-  const totalAmount = principal + totalInterest;
-
-  return {
-    totalInterest: parseFloat(totalInterest.toFixed(2)),
-    totalAmount: parseFloat(totalAmount.toFixed(2)),
-  };
+  const totalInterest = parseFloat(((principal * ratePercent) / 100).toFixed(2));
+  const totalAmount = parseFloat((principal + totalInterest).toFixed(2));
+  return { totalInterest, totalAmount };
 }
 
-// ── Round-based payment helpers ───────────────────────────────────────────────
+// ── Round helpers ─────────────────────────────────────────────────────────────
 
 /** จำนวนรอบทั้งหมด = ceil(ยอดรวม / เก็บต่อรอบ) */
 export function calculateTotalRounds(
@@ -75,6 +50,8 @@ export function getNextPaymentAmount(
   return parseFloat(Math.min(balance, paymentPerRound).toFixed(2));
 }
 
+// ── Due date auto-calculation ─────────────────────────────────────────────────
+
 /** จำนวนวันต่อรอบ */
 export function daysPerPeriod(period: InterestPeriod): number {
   switch (period) {
@@ -85,7 +62,22 @@ export function daysPerPeriod(period: InterestPeriod): number {
   }
 }
 
-/** วันที่เก็บรอบถัดไป */
+/**
+ * คำนวณวันครบกำหนดอัตโนมัติ
+ * = วันเริ่มต้น + (จำนวนรอบ × วันต่อรอบ)
+ */
+export function calculateDueDate(
+  startDate: string,
+  totalRounds: number,
+  period: InterestPeriod
+): string {
+  const start = new Date(startDate);
+  const days = totalRounds * daysPerPeriod(period);
+  const due = new Date(start.getTime() + days * 24 * 60 * 60 * 1000);
+  return due.toISOString().split("T")[0];
+}
+
+/** วันเก็บเงินรอบถัดไป = วันเริ่ม + (รอบที่จ่ายแล้ว + 1) × วันต่อรอบ */
 export function getNextPaymentDate(
   startDate: string,
   roundsPaid: number,
@@ -96,19 +88,7 @@ export function getNextPaymentDate(
   return new Date(start.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
-// ── Label helpers ─────────────────────────────────────────────────────────────
-
-export function getPeriodLabel(period: InterestPeriod): string {
-  const labels: Record<InterestPeriod, string> = {
-    daily:    "รายวัน",
-    weekly:   "รายสัปดาห์",
-    biweekly: "ราย 15 วัน",
-    monthly:  "รายเดือน",
-  };
-  return labels[period];
-}
-
-// ── Date / status helpers ─────────────────────────────────────────────────────
+// ── Status helpers ────────────────────────────────────────────────────────────
 
 export function isOverdue(dueDate: string): boolean {
   return new Date(dueDate) < new Date();
@@ -126,6 +106,18 @@ export function daysUntilDue(dueDate: string): number {
   const due = new Date(dueDate);
   const now = new Date();
   return Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// ── Labels ────────────────────────────────────────────────────────────────────
+
+export function getPeriodLabel(period: InterestPeriod): string {
+  const labels: Record<InterestPeriod, string> = {
+    daily:    "ทวงรายวัน",
+    weekly:   "ทวงรายสัปดาห์",
+    biweekly: "ทวงราย 15 วัน",
+    monthly:  "ทวงรายเดือน",
+  };
+  return labels[period];
 }
 
 // ── Formatting ────────────────────────────────────────────────────────────────
