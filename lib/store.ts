@@ -1,6 +1,10 @@
 "use client";
 
-import type { Debtor, Payment, AppState, DebtSummary } from "@/types";
+import type { Debtor, Payment, AppState, DebtSummary, LoanAddition } from "@/types";
+import {
+  calculateInterest,
+  calculateTotalRounds,
+} from "@/lib/calculator";
 
 const STORAGE_KEY = "rubsap_data";
 
@@ -26,11 +30,12 @@ export function saveState(state: AppState): void {
 // ── Debtors ──────────────────────────────────────────────────────────────────
 
 export function getDebtors(): Debtor[] {
-  return loadState().debtors;
+  return loadState().debtors.map(normalize);
 }
 
 export function getDebtor(id: string): Debtor | undefined {
-  return loadState().debtors.find((d) => d.id === id);
+  const d = loadState().debtors.find((d) => d.id === id);
+  return d ? normalize(d) : undefined;
 }
 
 export function addDebtor(debtor: Debtor): void {
@@ -52,6 +57,62 @@ export function deleteDebtor(id: string): void {
   saveState(state);
 }
 
+// ── Add more loan (เพิ่มยอดกู้) ──────────────────────────────────────────────
+
+export function addMoreLoan(
+  debtorId: string,
+  additionalAmount: number,
+  newDueDate: string,
+  newPaymentPerRound: number,
+  notes?: string
+): void {
+  const state = loadState();
+  const debtor = state.debtors.find((d) => d.id === debtorId);
+  if (!debtor) return;
+
+  const currentBalance = parseFloat(
+    (debtor.totalAmount - debtor.amountPaid).toFixed(2)
+  );
+  const newPrincipal = parseFloat(
+    (currentBalance + additionalAmount).toFixed(2)
+  );
+  const newStartDate = new Date().toISOString().split("T")[0];
+
+  const { totalInterest, totalAmount } = calculateInterest(
+    newPrincipal,
+    debtor.interestRate,
+    newStartDate,
+    newDueDate,
+    debtor.interestPeriod
+  );
+
+  const totalRounds = calculateTotalRounds(totalAmount, newPaymentPerRound);
+
+  const addition: LoanAddition = {
+    id: crypto.randomUUID(),
+    date: new Date().toISOString(),
+    previousBalance: currentBalance,
+    additionalAmount,
+    newPrincipal,
+    newTotalAmount: totalAmount,
+    newPaymentPerRound,
+    notes,
+  };
+
+  debtor.principalAmount = newPrincipal;
+  debtor.startDate = newStartDate;
+  debtor.dueDate = newDueDate;
+  debtor.totalInterest = totalInterest;
+  debtor.totalAmount = totalAmount;
+  debtor.paymentPerRound = newPaymentPerRound;
+  debtor.totalRounds = totalRounds;
+  debtor.amountPaid = 0;
+  debtor.loanAdditions = [...(debtor.loanAdditions ?? []), addition];
+  debtor.updatedAt = new Date().toISOString();
+
+  saveState(state);
+}
+
 // ── Payments ─────────────────────────────────────────────────────────────────
 
 export function getPayments(debtorId?: string): Payment[] {
@@ -64,7 +125,9 @@ export function addPayment(payment: Payment): void {
   state.payments.push(payment);
   const debtor = state.debtors.find((d) => d.id === payment.debtorId);
   if (debtor) {
-    debtor.amountPaid = parseFloat((debtor.amountPaid + payment.amount).toFixed(2));
+    debtor.amountPaid = parseFloat(
+      (debtor.amountPaid + payment.amount).toFixed(2)
+    );
     debtor.updatedAt = new Date().toISOString();
   }
   saveState(state);
@@ -93,15 +156,14 @@ export function getSummary(): DebtSummary {
   const now = new Date();
   const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  return debtors.reduce<DebtSummary>(
+  return debtors.map(normalize).reduce<DebtSummary>(
     (acc, d) => {
       const balance = parseFloat((d.totalAmount - d.amountPaid).toFixed(2));
       acc.totalLent += d.principalAmount;
       acc.totalCollected += d.amountPaid;
       acc.totalOutstanding += Math.max(0, balance);
-      acc.totalInterestEarned += d.amountPaid > d.principalAmount
-        ? d.amountPaid - d.principalAmount
-        : 0;
+      acc.totalInterestEarned +=
+        d.amountPaid > d.principalAmount ? d.amountPaid - d.principalAmount : 0;
       const due = new Date(d.dueDate);
       if (balance > 0 && due < now) acc.overdueCount++;
       if (balance > 0 && due >= now && due <= sevenDays) acc.dueSoonCount++;
@@ -116,4 +178,15 @@ export function getSummary(): DebtSummary {
       dueSoonCount: 0,
     }
   );
+}
+
+// ── Backward-compat normalizer ────────────────────────────────────────────────
+
+function normalize(d: Debtor): Debtor {
+  return {
+    ...d,
+    paymentPerRound: d.paymentPerRound ?? d.totalAmount,
+    totalRounds: d.totalRounds ?? 1,
+    loanAdditions: d.loanAdditions ?? [],
+  };
 }

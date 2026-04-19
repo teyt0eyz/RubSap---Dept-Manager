@@ -1,16 +1,37 @@
 export type InterestPeriod = "daily" | "weekly" | "biweekly" | "monthly";
 
+export interface LoanAddition {
+  id: string;
+  date: string;
+  previousBalance: number;
+  additionalAmount: number;
+  newPrincipal: number;
+  newTotalAmount: number;
+  newPaymentPerRound: number;
+  notes?: string;
+}
+
 export interface Debtor {
   id: string;
   name: string;
   principalAmount: number;
-  startDate: string;       // ISO date string
-  dueDate: string;         // ISO date string
-  interestRate: number;    // percentage, e.g. 5 = 5%
+  startDate: string;
+  dueDate: string;
+  interestRate: number;
   interestPeriod: InterestPeriod;
+
+  // Payment schedule
+  paymentPerRound: number;   // เก็บต่อรอบ
+  totalRounds: number;       // รวมกี่รอบ (ceil(totalAmount / paymentPerRound))
+
+  // Calculated totals
   totalInterest: number;
-  totalAmount: number;     // principal + totalInterest
+  totalAmount: number;
   amountPaid: number;
+
+  // History of loan additions (เพิ่มยอดกู้)
+  loanAdditions: LoanAddition[];
+
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -20,7 +41,7 @@ export interface Payment {
   id: string;
   debtorId: string;
   amount: number;
-  date: string;           // ISO date string
+  date: string;
   notes?: string;
 }
 
