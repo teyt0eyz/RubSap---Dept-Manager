@@ -22,8 +22,7 @@ interface Preview {
   totalInterest: number;
   totalAmount: number;
   totalRounds: number;
-  paymentPerRound: number;
-  lastRoundAmount: number;
+  netPerRound: number;
   dueDate: string;
 }
 
@@ -80,14 +79,12 @@ function AddDebtForm() {
       const { totalInterest, totalAmount } = calculateInterest(principal, rate);
 
       if (!isNaN(ppr) && ppr > 0) {
-        const totalRounds = calculateTotalRounds(totalAmount, ppr);
+        const totalRounds = calculateTotalRounds(principal, ppr);
+        const netPerRound = parseFloat((totalAmount / totalRounds).toFixed(2));
         const dueDate = calculateDueDate(form.startDate, totalRounds, form.interestPeriod);
-        const lastRoundAmount = parseFloat(
-          (totalAmount - (totalRounds - 1) * ppr).toFixed(2)
-        );
-        setPreview({ totalInterest, totalAmount, totalRounds, paymentPerRound: ppr, lastRoundAmount, dueDate });
+        setPreview({ totalInterest, totalAmount, totalRounds, netPerRound, dueDate });
       } else {
-        setPreview({ totalInterest, totalAmount, totalRounds: 0, paymentPerRound: 0, lastRoundAmount: 0, dueDate: "" });
+        setPreview({ totalInterest, totalAmount, totalRounds: 0, netPerRound: 0, dueDate: "" });
       }
     } else {
       setPreview(null);
@@ -117,7 +114,8 @@ function AddDebtForm() {
     const rate = parseFloat(form.interestRate);
     const ppr = parseFloat(form.paymentPerRound);
     const { totalInterest, totalAmount } = calculateInterest(principal, rate);
-    const totalRounds = calculateTotalRounds(totalAmount, ppr);
+    const totalRounds = calculateTotalRounds(principal, ppr);
+    const netPerRound = parseFloat((totalAmount / totalRounds).toFixed(2));
     const dueDate = calculateDueDate(form.startDate, totalRounds, form.interestPeriod);
     const now = new Date().toISOString();
 
@@ -131,7 +129,7 @@ function AddDebtForm() {
         dueDate,
         interestRate: rate,
         interestPeriod: form.interestPeriod,
-        paymentPerRound: ppr,
+        paymentPerRound: netPerRound,
         totalRounds,
         totalInterest,
         totalAmount,
@@ -147,7 +145,7 @@ function AddDebtForm() {
         dueDate,
         interestRate: rate,
         interestPeriod: form.interestPeriod,
-        paymentPerRound: ppr,
+        paymentPerRound: netPerRound,
         totalRounds,
         totalInterest,
         totalAmount,
@@ -274,7 +272,7 @@ function AddDebtForm() {
           />
           {errors.paymentPerRound && <p className="text-red-500 text-sm mt-1">{errors.paymentPerRound}</p>}
           <p className="text-xs text-gray-400 mt-1">
-            ระบบคำนวณจำนวนรอบและวันครบกำหนดให้อัตโนมัติ
+            ระบุเงินต้นที่ต้องการเก็บต่อรอบ ระบบจะเฉลี่ยดอกเบี้ยรวมในแต่ละรอบให้อัตโนมัติ
           </p>
         </div>
 
@@ -314,29 +312,17 @@ function AddDebtForm() {
                 </div>
                 <PRow label="จำนวนรอบทั้งหมด" value={`${preview.totalRounds} รอบ`} large />
 
-                {/* Per-round breakdown */}
-                <div className="bg-blue-600/50 rounded-xl p-3 space-y-2 mt-1">
-                  {preview.totalRounds > 1 ? (
-                    <>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-blue-200">รอบที่ 1 – {preview.totalRounds - 1}</span>
-                        <span className="font-bold">
-                          {formatCurrency(preview.paymentPerRound)} / รอบ
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm border-t border-blue-500/50 pt-2">
-                        <span className="text-blue-200">รอบที่ {preview.totalRounds} (สุดท้าย)</span>
-                        <span className="font-extrabold text-yellow-300">
-                          {formatCurrency(preview.lastRoundAmount)}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-blue-200">รอบเดียว</span>
-                      <span className="font-bold">{formatCurrency(preview.totalAmount)}</span>
-                    </div>
-                  )}
+                {/* Per-round net amount */}
+                <div className="bg-blue-600/50 rounded-xl p-3 mt-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-blue-200">เก็บต่อรอบ (รวมดอกเบี้ย)</span>
+                    <span className="font-extrabold text-yellow-300 text-base">
+                      {formatCurrency(preview.netPerRound)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs text-blue-300 mt-1.5">
+                    <span>เงินต้น {formatCurrency(parseFloat(form.principalAmount) || 0)} ÷ {preview.totalRounds} รอบ + ดอกเบี้ยเฉลี่ย</span>
+                  </div>
                 </div>
 
                 {/* วันครบกำหนด auto */}

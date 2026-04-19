@@ -84,7 +84,8 @@ export function addMoreLoan(
     debtor.interestRate
   );
 
-  const totalRounds = calculateTotalRounds(totalAmount, newPaymentPerRound);
+  const totalRounds = calculateTotalRounds(newPrincipal, newPaymentPerRound);
+  const netPerRound = parseFloat((totalAmount / totalRounds).toFixed(2));
   const newDueDate = calculateDueDate(
     newStartDate,
     totalRounds,
@@ -107,7 +108,7 @@ export function addMoreLoan(
   debtor.dueDate = newDueDate;
   debtor.totalInterest = totalInterest;
   debtor.totalAmount = totalAmount;
-  debtor.paymentPerRound = newPaymentPerRound;
+  debtor.paymentPerRound = netPerRound;
   debtor.totalRounds = totalRounds;
   debtor.amountPaid = 0;
   debtor.loanAdditions = [...(debtor.loanAdditions ?? []), addition];

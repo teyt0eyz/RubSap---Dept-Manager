@@ -44,7 +44,7 @@ export default function DebtorDetailPage() {
     totalInterest: number;
     totalAmount: number;
     totalRounds: number;
-    lastRoundAmount: number;
+    netPerRound: number;
     newDueDate: string;
   } | null>(null);
 
@@ -71,12 +71,10 @@ export default function DebtorDetailPage() {
       const newPrincipal = parseFloat((balance + extra).toFixed(2));
       const today = new Date().toISOString().split("T")[0];
       const { totalInterest, totalAmount } = calculateInterest(newPrincipal, debtor.interestRate);
-      const totalRounds = calculateTotalRounds(totalAmount, ppr);
+      const totalRounds = calculateTotalRounds(newPrincipal, ppr);
+      const netPerRound = parseFloat((totalAmount / totalRounds).toFixed(2));
       const newDueDate = calculateDueDate(today, totalRounds, debtor.interestPeriod);
-      const lastRoundAmount = parseFloat(
-        (totalAmount - (totalRounds - 1) * ppr).toFixed(2)
-      );
-      setAddPreview({ newPrincipal, totalInterest, totalAmount, totalRounds, lastRoundAmount, newDueDate });
+      setAddPreview({ newPrincipal, totalInterest, totalAmount, totalRounds, netPerRound, newDueDate });
     } else {
       setAddPreview(null);
     }
@@ -104,10 +102,6 @@ export default function DebtorDetailPage() {
   const nextPayAmt = getNextPaymentAmount(balance, debtor.paymentPerRound);
   const nextPayDate = paid ? null : getNextPaymentDate(debtor.startDate, roundsPaid, debtor.interestPeriod);
 
-  // Per-round net amount for display
-  const lastRoundAmt = parseFloat(
-    (debtor.totalAmount - (debtor.totalRounds - 1) * debtor.paymentPerRound).toFixed(2)
-  );
 
   function handleAddPayment(e: React.FormEvent) {
     e.preventDefault();
@@ -219,25 +213,15 @@ export default function DebtorDetailPage() {
             </div>
 
             {/* Per-round net amount info */}
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-3 space-y-1.5 text-sm">
-              <p className="font-bold text-gray-600 mb-1">จำนวนสุทธิต่อรอบ (รวมดอกเบี้ยแล้ว)</p>
-              {debtor.totalRounds > 1 ? (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">รอบที่ 1 – {debtor.totalRounds - 1}</span>
-                    <span className="font-bold text-blue-700">{formatCurrency(debtor.paymentPerRound)} / รอบ</span>
-                  </div>
-                  <div className="flex justify-between border-t border-gray-200 pt-1.5">
-                    <span className="text-gray-500">รอบที่ {debtor.totalRounds} (สุดท้าย)</span>
-                    <span className="font-bold text-green-700">{formatCurrency(lastRoundAmt)}</span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex justify-between">
-                  <span className="text-gray-500">รอบเดียว</span>
-                  <span className="font-bold text-blue-700">{formatCurrency(debtor.totalAmount)}</span>
-                </div>
-              )}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-3 text-sm">
+              <p className="font-bold text-gray-600 mb-2">จำนวนสุทธิต่อรอบ (รวมดอกเบี้ยแล้ว)</p>
+              <div className="flex justify-between">
+                <span className="text-gray-500">ทุกรอบเท่ากัน ({debtor.totalRounds} รอบ)</span>
+                <span className="font-extrabold text-blue-700 text-base">{formatCurrency(debtor.paymentPerRound)} / รอบ</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                รวมดอกเบี้ยเฉลี่ยไว้แล้ว · ยอดรวม {formatCurrency(debtor.totalAmount)}
+              </p>
             </div>
 
             {/* Next payment */}
@@ -357,24 +341,12 @@ export default function DebtorDetailPage() {
                     <div className="h-px bg-orange-400" />
                     <APRow label="ยอดรวมใหม่"   value={formatCurrency(addPreview.totalAmount)} bold />
                     <APRow label="จำนวนรอบ"     value={`${addPreview.totalRounds} รอบ`} bold />
-                    <div className="bg-orange-400/40 rounded-xl p-2.5 space-y-1.5 text-sm">
-                      {addPreview.totalRounds > 1 ? (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-orange-100">รอบที่ 1 – {addPreview.totalRounds - 1}</span>
-                            <span className="font-bold">{formatCurrency(parseFloat(addPPR))} / รอบ</span>
-                          </div>
-                          <div className="flex justify-between border-t border-orange-400/50 pt-1.5">
-                            <span className="text-orange-100">รอบสุดท้าย</span>
-                            <span className="font-extrabold text-yellow-300">{formatCurrency(addPreview.lastRoundAmount)}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex justify-between">
-                          <span className="text-orange-100">รอบเดียว</span>
-                          <span className="font-bold">{formatCurrency(addPreview.totalAmount)}</span>
-                        </div>
-                      )}
+                    <div className="bg-orange-400/40 rounded-xl p-2.5 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-orange-100">เก็บต่อรอบ (รวมดอกเบี้ย)</span>
+                        <span className="font-extrabold text-yellow-300 text-base">{formatCurrency(addPreview.netPerRound)}</span>
+                      </div>
+                      <p className="text-xs text-orange-200 mt-1">ทุกรอบเท่ากัน · ดอกเบี้ยเฉลี่ยแล้ว</p>
                     </div>
                     <div className="flex items-center justify-between bg-green-500/30 rounded-xl px-3 py-2 mt-1">
                       <span className="text-sm font-semibold flex items-center gap-1">
