@@ -11,7 +11,7 @@ import {
   formatCurrency,
   formatDate,
 } from "@/lib/calculator";
-import { addDebtor, updateDebtor, getDebtor } from "@/lib/store";
+import { addDebtor, updateDebtor, getDebtor, getDebtorNames } from "@/lib/store";
 import type { Debtor, InterestPeriod } from "@/types";
 import Link from "next/link";
 
@@ -47,6 +47,13 @@ function AddDebtForm() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Load debtor names for autocomplete
+  useEffect(() => {
+    if (!editId) setNameSuggestions(getDebtorNames());
+  }, [editId]);
 
   // Load existing data when editing
   useEffect(() => {
@@ -188,13 +195,40 @@ function AddDebtForm() {
       <form onSubmit={handleSubmit} className="px-4 pt-5 space-y-5">
 
         {/* ชื่อ */}
-        <div>
+        <div className="relative">
           <label className="block text-base font-bold text-gray-700 mb-2">ชื่อลูกหนี้ *</label>
           <input
             type="text" className={inputCls("name")}
             placeholder="เช่น สมชาย ใจดี"
-            value={form.name} onChange={(e) => set("name", e.target.value)}
+            value={form.name}
+            autoComplete="off"
+            onChange={(e) => {
+              set("name", e.target.value);
+              setShowSuggestions(true);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           />
+          {showSuggestions && !editId && (() => {
+            const filtered = nameSuggestions.filter(
+              (n) => n.toLowerCase().includes(form.name.toLowerCase()) && n !== form.name
+            );
+            return filtered.length > 0 ? (
+              <ul className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border-2 border-blue-200 rounded-xl shadow-xl overflow-hidden">
+                {filtered.map((n) => (
+                  <li key={n}>
+                    <button
+                      type="button"
+                      onMouseDown={() => { set("name", n); setShowSuggestions(false); }}
+                      className="w-full text-left px-4 py-3 text-lg font-medium hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-0"
+                    >
+                      {n}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null;
+          })()}
           {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
         </div>
 

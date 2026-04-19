@@ -5,6 +5,7 @@ import {
   calculateInterest,
   calculateTotalRounds,
   calculateDueDate,
+  getNextPaymentDate,
 } from "@/lib/calculator";
 
 const STORAGE_KEY = "rubsap_data";
@@ -193,4 +194,85 @@ function normalize(d: Debtor): Debtor {
     totalRounds: d.totalRounds ?? 1,
     loanAdditions: d.loanAdditions ?? [],
   };
+}
+
+// ── Unique debtor names (for autocomplete) ────────────────────────────────────
+
+export function getDebtorNames(): string[] {
+  const { debtors } = loadState();
+  return Array.from(new Set(debtors.map((d) => d.name))).sort();
+}
+
+// ── Monthly statistics ────────────────────────────────────────────────────────
+
+export interface MonthlyStats {
+  year: number;
+  month: number;
+  lentAmount: number;
+  expectedInterest: number;
+  actualCollected: number;
+  estimatedInterestCollected: number;
+  newDebtorCount: number;
+}
+
+export function getMonthlyStats(): MonthlyStats[] {
+  const { debtors, payments } = loadState();
+  const map = new Map<string, MonthlyStats>();
+
+  const key = (y: number, m: number) => `${y}-${String(m).padStart(2, "0")}`;
+  const ensure = (y: number, m: number): MonthlyStats => {
+    const k = key(y, m);
+    if (!map.has(k)) {
+      map.set(k, { year: y, month: m, lentAmount: 0, expectedInterest: 0, actualCollected: 0, estimatedInterestCollected: 0, newDebtorCount: 0 });
+    }
+    return map.get(k)!;
+  };
+
+  for (const raw of debtors) {
+    const d = normalize(raw);
+
+    // New debtor: lent amount & debtor count
+    const created = new Date(d.createdAt);
+    const cs = ensure(created.getFullYear(), created.getMonth() + 1);
+    cs.newDebtorCount++;
+    const additionsTotal = d.loanAdditions.reduce((s, a) => s + a.additionalAmount, 0);
+    cs.lentAmount += parseFloat(Math.max(0, d.principalAmount - additionsTotal).toFixed(2));
+
+    // Loan additions: additional principal lent
+    for (const a of d.loanAdditions) {
+      const ad = new Date(a.date);
+      const as = ensure(ad.getFullYear(), ad.getMonth() + 1);
+      as.lentAmount += a.additionalAmount;
+    }
+
+    // Expected interest distributed per round
+    const interestPerRound = d.totalRounds > 0 ? d.totalInterest / d.totalRounds : 0;
+    for (let round = 1; round <= d.totalRounds; round++) {
+      const due = getNextPaymentDate(d.startDate, round - 1, d.interestPeriod);
+      const rs = ensure(due.getFullYear(), due.getMonth() + 1);
+      rs.expectedInterest += interestPerRound;
+    }
+  }
+
+  // Actual payments & estimated interest portion
+  const debtorMap = new Map(debtors.map((d) => [d.id, normalize(d)]));
+  for (const p of payments) {
+    const pd = new Date(p.date);
+    const ps = ensure(pd.getFullYear(), pd.getMonth() + 1);
+    ps.actualCollected += p.amount;
+    const d = debtorMap.get(p.debtorId);
+    if (d && d.totalAmount > 0) {
+      ps.estimatedInterestCollected += p.amount * (d.totalInterest / d.totalAmount);
+    }
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
+    .map((s) => ({
+      ...s,
+      lentAmount: parseFloat(s.lentAmount.toFixed(2)),
+      expectedInterest: parseFloat(s.expectedInterest.toFixed(2)),
+      actualCollected: parseFloat(s.actualCollected.toFixed(2)),
+      estimatedInterestCollected: parseFloat(s.estimatedInterestCollected.toFixed(2)),
+    }));
 }

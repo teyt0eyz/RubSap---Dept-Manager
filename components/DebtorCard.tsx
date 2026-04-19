@@ -5,10 +5,11 @@ import {
   formatCurrency, formatDate, isOverdue, isDueSoon, daysUntilDue,
   calculateRoundsRemaining, getNextPaymentAmount,
 } from "@/lib/calculator";
+import { type CreditInfo, creditBadgeCls } from "@/lib/credit";
 import { AlertTriangle, Clock, CheckCircle2, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
-export default function DebtorCard({ debtor }: { debtor: Debtor }) {
+export default function DebtorCard({ debtor, creditInfo }: { debtor: Debtor; creditInfo?: CreditInfo }) {
   const balance = parseFloat((debtor.totalAmount - debtor.amountPaid).toFixed(2));
   const overdue = isOverdue(debtor.dueDate);
   const dueSoon = isDueSoon(debtor.dueDate);
@@ -48,7 +49,14 @@ export default function DebtorCard({ debtor }: { debtor: Debtor }) {
               {debtor.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <h3 className="text-lg font-bold text-gray-800 truncate">{debtor.name}</h3>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="text-lg font-bold text-gray-800 truncate">{debtor.name}</h3>
+                {creditInfo && (
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${creditBadgeCls(creditInfo.tag)}`}>
+                    {creditInfo.label}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-1">
                 {statusIcon}
                 <span className="text-sm font-medium text-gray-600">{statusText}</span>
