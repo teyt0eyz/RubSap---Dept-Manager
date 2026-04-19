@@ -27,6 +27,14 @@ export function analyzeCreditTag(debtor: Debtor, allPayments: Payment[]): Credit
     return mk("new", "ใหม่", 0, 0);
   }
 
+  // Fully-paid debts: skip round-by-round (expected dates may be future)
+  if (paid) {
+    const lastPaidAt = new Date(Math.max(...payments.map((p) => new Date(p.date).getTime())));
+    return lastPaidAt <= new Date(debtor.dueDate)
+      ? mk("excellent", "ดีเยี่ยม", 0, 0)
+      : mk("good", "ดี", 0, 0);
+  }
+
   const now = new Date();
   let onTimeCount = 0;
   let lateCount = 0;

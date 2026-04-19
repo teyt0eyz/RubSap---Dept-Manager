@@ -11,6 +11,8 @@ export interface LoanAddition {
   notes?: string;
 }
 
+export type InterestType = "percent" | "fixed";
+
 export interface Debtor {
   id: string;
   name: string;
@@ -18,6 +20,7 @@ export interface Debtor {
   startDate: string;
   dueDate: string;
   interestRate: number;
+  interestType: InterestType;
   interestPeriod: InterestPeriod;
 
   // Payment schedule

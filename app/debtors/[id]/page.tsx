@@ -70,7 +70,7 @@ export default function DebtorDetailPage() {
       const balance = parseFloat((debtor.totalAmount - debtor.amountPaid).toFixed(2));
       const newPrincipal = parseFloat((balance + extra).toFixed(2));
       const today = new Date().toISOString().split("T")[0];
-      const { totalInterest, totalAmount } = calculateInterest(newPrincipal, debtor.interestRate);
+      const { totalInterest, totalAmount } = calculateInterest(newPrincipal, debtor.interestRate, debtor.interestType ?? "percent");
       const totalRounds = calculateTotalRounds(newPrincipal, ppr);
       const netPerRound = parseFloat((totalAmount / totalRounds).toFixed(2));
       const newDueDate = calculateDueDate(today, totalRounds, debtor.interestPeriod);
@@ -260,7 +260,8 @@ export default function DebtorDetailPage() {
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100 space-y-3">
           <h2 className="text-base font-bold text-gray-700 mb-1">รายละเอียดเงินกู้</h2>
           <DRow icon={<DollarSign size={18} className="text-blue-500" />}   label="เงินต้น"           value={formatCurrency(debtor.principalAmount)} />
-          <DRow icon={<Percent size={18} className="text-purple-500" />}    label="อัตราดอกเบี้ย"    value={`${debtor.interestRate}% ของเงินต้น`} />
+          <DRow icon={<Percent size={18} className="text-purple-500" />}    label="อัตราดอกเบี้ย"
+            value={debtor.interestType === "fixed" ? `${formatCurrency(debtor.interestRate)} (ตามใจ)` : `${debtor.interestRate}% ของเงินต้น`} />
           <DRow icon={<DollarSign size={18} className="text-amber-500" />}  label="ดอกเบี้ยรวม"      value={formatCurrency(debtor.totalInterest)} />
           <DRow icon={<DollarSign size={18} className="text-green-500" />}  label="ยอดรวมทั้งหมด"   value={formatCurrency(debtor.totalAmount)} />
           <DRow icon={<RefreshCw size={18} className="text-blue-400" />}    label="เก็บต่อรอบ"       value={formatCurrency(debtor.paymentPerRound)} />
@@ -337,7 +338,10 @@ export default function DebtorDetailPage() {
                   <div className="bg-orange-500 text-white rounded-xl p-4 space-y-2">
                     <p className="font-bold text-sm mb-2">ตัวอย่างการคำนวณใหม่</p>
                     <APRow label="เงินต้นใหม่"   value={formatCurrency(addPreview.newPrincipal)} />
-                    <APRow label={`ดอกเบี้ย ${debtor.interestRate}%`} value={formatCurrency(addPreview.totalInterest)} />
+                    <APRow
+                      label={debtor.interestType === "fixed" ? "ดอกเบี้ย (ตามใจ)" : `ดอกเบี้ย ${debtor.interestRate}%`}
+                      value={formatCurrency(addPreview.totalInterest)}
+                    />
                     <div className="h-px bg-orange-400" />
                     <APRow label="ยอดรวมใหม่"   value={formatCurrency(addPreview.totalAmount)} bold />
                     <APRow label="จำนวนรอบ"     value={`${addPreview.totalRounds} รอบ`} bold />

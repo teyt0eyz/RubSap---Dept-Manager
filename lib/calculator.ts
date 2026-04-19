@@ -5,9 +5,12 @@ import type { InterestPeriod } from "@/types";
 
 export function calculateInterest(
   principal: number,
-  ratePercent: number
+  rateOrAmount: number,
+  type: "percent" | "fixed" = "percent"
 ): { totalInterest: number; totalAmount: number } {
-  const totalInterest = parseFloat(((principal * ratePercent) / 100).toFixed(2));
+  const totalInterest = type === "fixed"
+    ? parseFloat(rateOrAmount.toFixed(2))
+    : parseFloat(((principal * rateOrAmount) / 100).toFixed(2));
   const totalAmount = parseFloat((principal + totalInterest).toFixed(2));
   return { totalInterest, totalAmount };
 }

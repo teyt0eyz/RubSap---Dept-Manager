@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PlusCircle, Users, BarChart2 } from "lucide-react";
+import { Home, BookUser, Users, BarChart2 } from "lucide-react";
 
 const navItems = [
-  { href: "/", label: "หน้าหลัก", icon: Home },
-  { href: "/add-debt", label: "เพิ่ม", icon: PlusCircle },
-  { href: "/debtors", label: "ลูกหนี้", icon: Users },
-  { href: "/reports", label: "รายงาน", icon: BarChart2 },
+  { href: "/",         label: "หน้าหลัก",    icon: Home },
+  { href: "/contacts", label: "สมุดรายชื่อ", icon: BookUser },
+  { href: "/debtors",  label: "ลูกหนี้",     icon: Users },
+  { href: "/reports",  label: "รายงาน",      icon: BarChart2 },
 ];
 
 export default function BottomNav() {

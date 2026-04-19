@@ -82,7 +82,8 @@ export function addMoreLoan(
 
   const { totalInterest, totalAmount } = calculateInterest(
     newPrincipal,
-    debtor.interestRate
+    debtor.interestRate,
+    debtor.interestType ?? "percent"
   );
 
   const totalRounds = calculateTotalRounds(newPrincipal, newPaymentPerRound);
@@ -193,6 +194,7 @@ function normalize(d: Debtor): Debtor {
     paymentPerRound: d.paymentPerRound ?? d.totalAmount,
     totalRounds: d.totalRounds ?? 1,
     loanAdditions: d.loanAdditions ?? [],
+    interestType: d.interestType ?? "percent",
   };
 }
 
