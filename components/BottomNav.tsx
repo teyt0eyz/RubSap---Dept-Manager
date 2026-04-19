@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { Home, PlusCircle, Users, BarChart2 } from "lucide-react";
 
 const navItems = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/add-debt", label: "Add", icon: PlusCircle },
-  { href: "/debtors", label: "Debtors", icon: Users },
-  { href: "/reports", label: "Reports", icon: BarChart2 },
+  { href: "/", label: "หน้าหลัก", icon: Home },
+  { href: "/add-debt", label: "เพิ่ม", icon: PlusCircle },
+  { href: "/debtors", label: "ลูกหนี้", icon: Users },
+  { href: "/reports", label: "รายงาน", icon: BarChart2 },
 ];
 
 export default function BottomNav() {

@@ -1,7 +1,7 @@
 {
-  "name": "RubSap - Debt Manager",
+  "name": "RubSap - จัดการหนี้",
   "short_name": "RubSap",
-  "description": "Simple debt management for everyday lending",
+  "description": "แอปจัดการหนี้สินสำหรับการให้กู้ยืมในชีวิตประจำวัน",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#eff6ff",

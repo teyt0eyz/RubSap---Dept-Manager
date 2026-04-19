@@ -23,12 +23,12 @@ export default function Header({ title }: HeaderProps) {
       <div className="flex items-center justify-between px-5 py-4 max-w-lg mx-auto">
         <div>
           <h1 className="text-2xl font-bold text-blue-800">{title}</h1>
-          <p className="text-sm text-blue-400 font-medium">RubSap Lending</p>
+          <p className="text-sm text-blue-400 font-medium">RubSap จัดการหนี้</p>
         </div>
         <button
           onClick={() => setShowAlert(!showAlert)}
           className="relative p-3 rounded-full bg-blue-50 hover:bg-blue-100 transition-colors"
-          aria-label="Notifications"
+          aria-label="การแจ้งเตือน"
         >
           <Bell size={24} className="text-blue-600" />
           {alertCount > 0 && (
@@ -40,7 +40,7 @@ export default function Header({ title }: HeaderProps) {
       </div>
       {showAlert && alertCount > 0 && (
         <div className="mx-5 mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 font-medium">
-          ⚠️ You have {alertCount} payment{alertCount > 1 ? "s" : ""} that need attention!
+          ⚠️ มี {alertCount} รายการที่ต้องดำเนินการ!
         </div>
       )}
     </header>

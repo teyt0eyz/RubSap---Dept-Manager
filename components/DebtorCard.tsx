@@ -19,20 +19,20 @@ export default function DebtorCard({ debtor }: DebtorCardProps) {
 
   let statusColor = "bg-blue-50 border-blue-200";
   let statusIcon = <Clock size={18} className="text-blue-500" />;
-  let statusText = `Due ${formatDate(debtor.dueDate)}`;
+  let statusText = `ครบกำหนด ${formatDate(debtor.dueDate)}`;
 
   if (paid) {
     statusColor = "bg-green-50 border-green-200";
     statusIcon = <CheckCircle2 size={18} className="text-green-500" />;
-    statusText = "Fully Paid";
+    statusText = "ชำระครบแล้ว";
   } else if (overdue) {
     statusColor = "bg-red-50 border-red-200";
     statusIcon = <AlertTriangle size={18} className="text-red-500" />;
-    statusText = `Overdue by ${Math.abs(days)} day${Math.abs(days) !== 1 ? "s" : ""}`;
+    statusText = `เกินกำหนด ${Math.abs(days)} วัน`;
   } else if (dueSoon) {
     statusColor = "bg-amber-50 border-amber-200";
     statusIcon = <AlertTriangle size={18} className="text-amber-500" />;
-    statusText = days === 0 ? "Due Today!" : `Due in ${days} day${days !== 1 ? "s" : ""}`;
+    statusText = days === 0 ? "ครบกำหนดวันนี้!" : `อีก ${days} วันครบกำหนด`;
   }
 
   return (
@@ -56,20 +56,20 @@ export default function DebtorCard({ debtor }: DebtorCardProps) {
 
         <div className="grid grid-cols-2 gap-2 mt-3">
           <div>
-            <p className="text-xs text-gray-500">Total Due</p>
+            <p className="text-xs text-gray-500">ยอดรวม</p>
             <p className="text-base font-bold text-gray-800">{formatCurrency(debtor.totalAmount)}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Balance</p>
+            <p className="text-xs text-gray-500">ยอดคงเหลือ</p>
             <p className={`text-base font-bold ${paid ? "text-green-600" : overdue ? "text-red-600" : "text-gray-800"}`}>
-              {paid ? "PAID" : formatCurrency(balance)}
+              {paid ? "ชำระแล้ว" : formatCurrency(balance)}
             </p>
           </div>
         </div>
 
         <div className="mt-3">
           <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>Paid {formatCurrency(debtor.amountPaid)}</span>
+            <span>ชำระแล้ว {formatCurrency(debtor.amountPaid)}</span>
             <span>{progress}%</span>
           </div>
           <div className="h-2.5 bg-white rounded-full overflow-hidden border border-gray-200">

@@ -45,10 +45,10 @@ export function calculateInterest(
 
 export function getPeriodLabel(period: InterestPeriod): string {
   const labels: Record<InterestPeriod, string> = {
-    daily: "Daily",
-    weekly: "Weekly",
-    biweekly: "Bi-weekly (15 days)",
-    monthly: "Monthly",
+    daily: "รายวัน",
+    weekly: "รายสัปดาห์",
+    biweekly: "ราย 15 วัน",
+    monthly: "รายเดือน",
   };
   return labels[period];
 }
@@ -72,15 +72,15 @@ export function daysUntilDue(dueDate: string): number {
 }
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-PH", {
+  return new Intl.NumberFormat("th-TH", {
     style: "currency",
-    currency: "PHP",
+    currency: "THB",
     minimumFractionDigits: 2,
   }).format(amount);
 }
 
 export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-PH", {
+  return new Date(dateStr).toLocaleDateString("th-TH", {
     year: "numeric",
     month: "short",
     day: "numeric",

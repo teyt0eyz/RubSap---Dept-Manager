@@ -3,8 +3,8 @@ import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
-  title: "RubSap - Debt Manager",
-  description: "Simple debt management for everyday lending",
+  title: "RubSap - จัดการหนี้",
+  description: "แอปจัดการหนี้สินสำหรับการให้กู้ยืมในชีวิตประจำวัน",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="th">
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>

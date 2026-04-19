@@ -84,17 +84,17 @@ function AddDebtForm() {
 
   function validate(): boolean {
     const e: Record<string, string> = {};
-    if (!form.name.trim()) e.name = "Name is required";
+    if (!form.name.trim()) e.name = "กรุณาใส่ชื่อลูกหนี้";
     const p = parseFloat(form.principalAmount);
     if (!form.principalAmount || isNaN(p) || p <= 0)
-      e.principalAmount = "Enter a valid amount";
+      e.principalAmount = "กรุณาใส่จำนวนเงินที่ถูกต้อง";
     const r = parseFloat(form.interestRate);
     if (!form.interestRate || isNaN(r) || r < 0)
-      e.interestRate = "Enter a valid rate";
-    if (!form.startDate) e.startDate = "Start date is required";
-    if (!form.dueDate) e.dueDate = "Due date is required";
+      e.interestRate = "กรุณาใส่อัตราดอกเบี้ยที่ถูกต้อง";
+    if (!form.startDate) e.startDate = "กรุณาเลือกวันที่เริ่มต้น";
+    if (!form.dueDate) e.dueDate = "กรุณาเลือกวันครบกำหนด";
     if (form.startDate && form.dueDate && form.dueDate <= form.startDate)
-      e.dueDate = "Due date must be after start date";
+      e.dueDate = "วันครบกำหนดต้องอยู่หลังวันที่เริ่มต้น";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -176,7 +176,7 @@ function AddDebtForm() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-blue-800">
-              {isEditing ? "Edit Debtor" : "Add New Debtor"}
+              {isEditing ? "แก้ไขลูกหนี้" : "เพิ่มลูกหนี้ใหม่"}
             </h1>
           </div>
         </div>
@@ -186,12 +186,12 @@ function AddDebtForm() {
         {/* Name */}
         <div>
           <label className="block text-base font-bold text-gray-700 mb-2">
-            Debtor Name *
+            ชื่อลูกหนี้ *
           </label>
           <input
             type="text"
             className={inputClass("name")}
-            placeholder="e.g. Juan dela Cruz"
+            placeholder="เช่น สมชาย ใจดี"
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
           />
@@ -203,7 +203,7 @@ function AddDebtForm() {
         {/* Principal */}
         <div>
           <label className="block text-base font-bold text-gray-700 mb-2">
-            Principal Amount (₱) *
+            เงินต้น (฿) *
           </label>
           <input
             type="number"
@@ -224,7 +224,7 @@ function AddDebtForm() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-base font-bold text-gray-700 mb-2">
-              Start Date *
+              วันที่เริ่มต้น *
             </label>
             <input
               type="date"
@@ -238,7 +238,7 @@ function AddDebtForm() {
           </div>
           <div>
             <label className="block text-base font-bold text-gray-700 mb-2">
-              Due Date *
+              วันครบกำหนด *
             </label>
             <input
               type="date"
@@ -256,13 +256,13 @@ function AddDebtForm() {
         {/* Interest Rate */}
         <div>
           <label className="block text-base font-bold text-gray-700 mb-2">
-            Interest Rate (%) *
+            อัตราดอกเบี้ย (%) *
           </label>
           <input
             type="number"
             inputMode="decimal"
             className={inputClass("interestRate")}
-            placeholder="e.g. 5"
+            placeholder="เช่น 5"
             value={form.interestRate}
             onChange={(e) => set("interestRate", e.target.value)}
             min="0"
@@ -276,7 +276,7 @@ function AddDebtForm() {
         {/* Interest Period */}
         <div>
           <label className="block text-base font-bold text-gray-700 mb-2">
-            Interest Period *
+            ระยะเวลาดอกเบี้ย *
           </label>
           <div className="grid grid-cols-2 gap-2">
             {PERIODS.map((p) => (
@@ -299,11 +299,11 @@ function AddDebtForm() {
         {/* Notes */}
         <div>
           <label className="block text-base font-bold text-gray-700 mb-2">
-            Notes (Optional)
+            หมายเหตุ (ถ้ามี)
           </label>
           <textarea
             className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 text-lg font-medium bg-white focus:outline-none focus:border-blue-400 transition-colors resize-none"
-            placeholder="Any extra details..."
+            placeholder="รายละเอียดเพิ่มเติม..."
             rows={2}
             value={form.notes}
             onChange={(e) => set("notes", e.target.value)}
@@ -315,17 +315,17 @@ function AddDebtForm() {
           <div className="bg-blue-600 text-white rounded-2xl p-5 shadow-md">
             <div className="flex items-center gap-2 mb-4">
               <Calculator size={20} />
-              <span className="text-lg font-bold">Calculation Preview</span>
+              <span className="text-lg font-bold">ตัวอย่างการคำนวณ</span>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-blue-200">Principal</span>
+                <span className="text-blue-200">เงินต้น</span>
                 <span className="font-bold">
                   {formatCurrency(parseFloat(form.principalAmount) || 0)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-blue-200">Total Interest</span>
+                <span className="text-blue-200">ดอกเบี้ยรวม</span>
                 <span className="font-bold">
                   {formatCurrency(preview.totalInterest)}
                 </span>
@@ -333,7 +333,7 @@ function AddDebtForm() {
               <div className="h-px bg-blue-500 my-2" />
               <div className="flex justify-between">
                 <span className="text-blue-100 font-bold text-lg">
-                  Total to Collect
+                  ยอดรวมที่ต้องเก็บ
                 </span>
                 <span className="font-extrabold text-xl">
                   {formatCurrency(preview.totalAmount)}
@@ -350,7 +350,7 @@ function AddDebtForm() {
           className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-4 rounded-2xl text-xl font-bold shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
         >
           <Save size={22} />
-          {saving ? "Saving..." : isEditing ? "Update Debtor" : "Save Debtor"}
+          {saving ? "กำลังบันทึก..." : isEditing ? "อัปเดตลูกหนี้" : "บันทึกลูกหนี้"}
         </button>
 
         <div className="h-4" />
@@ -361,7 +361,7 @@ function AddDebtForm() {
 
 export default function AddDebtPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-400">Loading...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-gray-400">กำลังโหลด...</div>}>
       <AddDebtForm />
     </Suspense>
   );

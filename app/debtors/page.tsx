@@ -41,15 +41,15 @@ export default function DebtorsPage() {
   });
 
   const filterLabels: Record<Filter, string> = {
-    all: `All (${debtors.length})`,
-    active: `Active`,
-    overdue: `Overdue`,
-    paid: `Paid`,
+    all: `ทั้งหมด (${debtors.length})`,
+    active: `ยังค้างอยู่`,
+    overdue: `เกินกำหนด`,
+    paid: `ชำระแล้ว`,
   };
 
   return (
     <>
-      <Header title="Debtors" />
+      <Header title="ลูกหนี้" />
       <div className="px-4 pt-5 space-y-4">
         {/* Search */}
         <div className="relative">
@@ -59,7 +59,7 @@ export default function DebtorsPage() {
           />
           <input
             type="search"
-            placeholder="Search by name..."
+            placeholder="ค้นหาด้วยชื่อ..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-12 pr-4 py-3.5 rounded-xl border-2 border-gray-200 bg-white text-lg focus:outline-none focus:border-blue-400"
@@ -89,14 +89,14 @@ export default function DebtorsPage() {
           <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-blue-100">
             <Users size={48} className="text-blue-200 mx-auto mb-3" />
             <p className="text-gray-500 font-medium text-lg">
-              {search ? `No results for "${search}"` : "No debtors yet"}
+              {search ? `ไม่พบ "${search}"` : "ยังไม่มีลูกหนี้"}
             </p>
             {!search && (
               <Link
                 href="/add-debt"
                 className="mt-4 inline-block bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold text-base hover:bg-blue-700 transition-colors"
               >
-                + Add First Debtor
+                + เพิ่มลูกหนี้คนแรก
               </Link>
             )}
           </div>
@@ -109,7 +109,7 @@ export default function DebtorsPage() {
       <Link
         href="/add-debt"
         className="fixed bottom-24 right-5 w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-xl flex items-center justify-center z-30 transition-transform active:scale-95"
-        aria-label="Add debtor"
+        aria-label="เพิ่มลูกหนี้"
       >
         <Plus size={28} />
       </Link>

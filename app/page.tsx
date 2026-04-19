@@ -54,9 +54,9 @@ export default function DashboardPage() {
   const recentDebtors = debtors.slice(0, 3);
 
   const chartData = [
-    { name: "Lent", value: summary.totalLent, color: "#3b82f6" },
-    { name: "Collected", value: summary.totalCollected, color: "#22c55e" },
-    { name: "Outstanding", value: summary.totalOutstanding, color: "#f59e0b" },
+    { name: "ปล่อยกู้", value: summary.totalLent, color: "#3b82f6" },
+    { name: "รับแล้ว", value: summary.totalCollected, color: "#22c55e" },
+    { name: "ค้างอยู่", value: summary.totalOutstanding, color: "#f59e0b" },
   ];
 
   const CustomTooltip = ({
@@ -78,34 +78,34 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Header title="Dashboard" />
+      <Header title="หน้าหลัก" />
       <div className="px-4 pt-5 space-y-5">
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-3">
           <SummaryCard
-            label="Total Lent"
+            label="เงินปล่อยกู้ทั้งหมด"
             value={formatCurrency(summary.totalLent)}
             icon={<TrendingUp size={22} />}
             colorClass="text-blue-700"
             bgClass="bg-blue-50"
           />
           <SummaryCard
-            label="Collected"
+            label="เงินที่รับแล้ว"
             value={formatCurrency(summary.totalCollected)}
             icon={<TrendingDown size={22} />}
             colorClass="text-green-700"
             bgClass="bg-green-50"
           />
           <SummaryCard
-            label="Outstanding"
+            label="ยอดค้างชำระ"
             value={formatCurrency(summary.totalOutstanding)}
             icon={<DollarSign size={22} />}
             colorClass="text-amber-700"
             bgClass="bg-amber-50"
           />
           <SummaryCard
-            label="Debtors"
-            value={String(debtors.length)}
+            label="จำนวนลูกหนี้"
+            value={String(debtors.length) + " คน"}
             icon={<Users size={22} />}
             colorClass="text-purple-700"
             bgClass="bg-purple-50"
@@ -116,7 +116,7 @@ export default function DashboardPage() {
         {debtors.length > 0 && (
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
             <h2 className="text-lg font-bold text-gray-800 mb-4">
-              Financial Overview
+              ภาพรวมการเงิน
             </h2>
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
@@ -143,13 +143,13 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-red-100">
             <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
               <AlertCircle size={20} className="text-red-500" />
-              Reminders
+              การแจ้งเตือน
             </h2>
 
             {overdueDebtors.length > 0 && (
               <div className="mb-3">
                 <p className="text-sm font-bold text-red-600 mb-2 uppercase tracking-wide">
-                  Overdue ({overdueDebtors.length})
+                  เกินกำหนด ({overdueDebtors.length})
                 </p>
                 {overdueDebtors.map((d) => (
                   <Link key={d.id} href={`/debtors/${d.id}`}>
@@ -170,7 +170,7 @@ export default function DashboardPage() {
             {dueSoonDebtors.length > 0 && (
               <div>
                 <p className="text-sm font-bold text-amber-600 mb-2 uppercase tracking-wide">
-                  Due Soon ({dueSoonDebtors.length})
+                  ใกล้ครบกำหนด ({dueSoonDebtors.length})
                 </p>
                 {dueSoonDebtors.map((d) => (
                   <Link key={d.id} href={`/debtors/${d.id}`}>
@@ -193,25 +193,25 @@ export default function DashboardPage() {
         {/* Recent Debtors */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-gray-800">Recent Debtors</h2>
+            <h2 className="text-lg font-bold text-gray-800">ลูกหนี้ล่าสุด</h2>
             <Link
               href="/debtors"
               className="text-sm font-semibold text-blue-600 hover:text-blue-700"
             >
-              See all
+              ดูทั้งหมด
             </Link>
           </div>
 
           {debtors.length === 0 ? (
             <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-blue-100">
               <Users size={48} className="text-blue-200 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium text-lg">No debtors yet</p>
-              <p className="text-gray-400 text-sm mt-1">Tap Add to add your first debtor</p>
+              <p className="text-gray-500 font-medium text-lg">ยังไม่มีลูกหนี้</p>
+              <p className="text-gray-400 text-sm mt-1">กดเพิ่มเพื่อเพิ่มลูกหนี้คนแรก</p>
               <Link
                 href="/add-debt"
                 className="mt-4 inline-block bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold text-base hover:bg-blue-700 transition-colors"
               >
-                + Add Debtor
+                + เพิ่มลูกหนี้
               </Link>
             </div>
           ) : (

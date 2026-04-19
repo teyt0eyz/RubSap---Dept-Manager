@@ -52,16 +52,16 @@ export default function ReportsPage() {
   const activeCount = debtors.length - paidCount - overdueCount;
 
   const pieData = [
-    { name: "Active", value: activeCount },
-    { name: "Paid", value: paidCount },
-    { name: "Overdue", value: overdueCount },
+    { name: "ยังค้างอยู่", value: activeCount },
+    { name: "ชำระแล้ว", value: paidCount },
+    { name: "เกินกำหนด", value: overdueCount },
   ].filter((d) => d.value > 0);
 
   const barData = debtors.slice(0, 6).map((d) => ({
     name: d.name.length > 8 ? d.name.slice(0, 8) + "…" : d.name,
-    Lent: d.principalAmount,
-    Paid: d.amountPaid,
-    Balance: Math.max(0, d.totalAmount - d.amountPaid),
+    ปล่อยกู้: d.principalAmount,
+    ชำระแล้ว: d.amountPaid,
+    คงเหลือ: Math.max(0, d.totalAmount - d.amountPaid),
   }));
 
   const collectionRate =
@@ -95,33 +95,33 @@ export default function ReportsPage() {
 
   return (
     <>
-      <Header title="Reports" />
+      <Header title="รายงาน" />
       <div className="px-4 pt-5 space-y-5">
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-3">
           <SummaryCard
-            label="Total Lent"
+            label="เงินปล่อยกู้ทั้งหมด"
             value={formatCurrency(summary.totalLent)}
             icon={<TrendingUp size={22} />}
             colorClass="text-blue-700"
             bgClass="bg-blue-50"
           />
           <SummaryCard
-            label="Total Collected"
+            label="เงินที่รับแล้ว"
             value={formatCurrency(summary.totalCollected)}
             icon={<TrendingDown size={22} />}
             colorClass="text-green-700"
             bgClass="bg-green-50"
           />
           <SummaryCard
-            label="Outstanding"
+            label="ยอดค้างชำระ"
             value={formatCurrency(summary.totalOutstanding)}
             icon={<AlertCircle size={22} />}
             colorClass="text-amber-700"
             bgClass="bg-amber-50"
           />
           <SummaryCard
-            label="Interest Earned"
+            label="ดอกเบี้ยที่ได้รับ"
             value={formatCurrency(summary.totalInterestEarned)}
             icon={<DollarSign size={22} />}
             colorClass="text-purple-700"
@@ -135,7 +135,7 @@ export default function ReportsPage() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-bold text-gray-700 flex items-center gap-2">
                 <Percent size={18} className="text-blue-500" />
-                Collection Rate
+                อัตราการเก็บเงิน
               </h2>
               <span className="text-2xl font-extrabold text-blue-600">
                 {collectionRate}%
@@ -148,7 +148,7 @@ export default function ReportsPage() {
               />
             </div>
             <div className="flex justify-between text-sm text-gray-400 mt-2">
-              <span>₱0</span>
+              <span>฿0</span>
               <span>{formatCurrency(summary.totalLent)}</span>
             </div>
           </div>
@@ -159,7 +159,7 @@ export default function ReportsPage() {
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
             <h2 className="text-base font-bold text-gray-700 mb-3 flex items-center gap-2">
               <CheckCircle2 size={18} className="text-green-500" />
-              Debtor Status
+              สถานะลูกหนี้
             </h2>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -204,7 +204,7 @@ export default function ReportsPage() {
         {barData.length > 0 && (
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
             <h2 className="text-base font-bold text-gray-700 mb-3">
-              Per-Debtor Breakdown
+              สรุปรายลูกหนี้
             </h2>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart
@@ -220,9 +220,9 @@ export default function ReportsPage() {
                 <YAxis hide />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f0f7ff" }} />
                 <Legend wrapperStyle={{ fontSize: "13px", fontWeight: 600 }} />
-                <Bar dataKey="Lent" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="Paid" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="Balance" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="ปล่อยกู้" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="ชำระแล้ว" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="คงเหลือ" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -232,7 +232,7 @@ export default function ReportsPage() {
           <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-blue-100">
             <TrendingUp size={48} className="text-blue-200 mx-auto mb-3" />
             <p className="text-gray-400 font-medium text-lg">
-              No data yet. Add debtors to see reports.
+              ยังไม่มีข้อมูล เพิ่มลูกหนี้เพื่อดูรายงาน
             </p>
           </div>
         )}

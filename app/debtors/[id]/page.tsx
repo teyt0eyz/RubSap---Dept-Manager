@@ -58,9 +58,9 @@ export default function DebtorDetailPage() {
   if (!debtor) {
     return (
       <div className="p-8 text-center">
-        <p className="text-gray-500 text-lg">Debtor not found.</p>
+        <p className="text-gray-500 text-lg">ไม่พบลูกหนี้</p>
         <Link href="/debtors" className="text-blue-600 font-semibold mt-2 block">
-          Back to Debtors
+          กลับไปรายการลูกหนี้
         </Link>
       </div>
     );
@@ -76,11 +76,11 @@ export default function DebtorDetailPage() {
     e.preventDefault();
     const amount = parseFloat(payAmount);
     if (isNaN(amount) || amount <= 0) {
-      setPayError("Enter a valid amount");
+      setPayError("กรุณาใส่จำนวนเงินที่ถูกต้อง");
       return;
     }
     if (amount > balance + 0.01) {
-      setPayError(`Max payment is ${formatCurrency(balance)}`);
+      setPayError(`จำนวนสูงสุดที่รับได้ ${formatCurrency(balance)}`);
       return;
     }
     const payment: Payment = {
@@ -160,25 +160,25 @@ export default function DebtorDetailPage() {
             )}
             <span className="text-lg font-bold">
               {paid
-                ? "Fully Paid"
+                ? "ชำระครบแล้ว"
                 : overdue
-                ? `Overdue by ${Math.abs(days)} day${Math.abs(days) !== 1 ? "s" : ""}`
+                ? `เกินกำหนด ${Math.abs(days)} วัน`
                 : days === 0
-                ? "Due Today!"
-                : `Due in ${days} day${days !== 1 ? "s" : ""}`}
+                ? "ครบกำหนดวันนี้!"
+                : `อีก ${days} วันครบกำหนด`}
             </span>
           </div>
           <p className="text-3xl font-extrabold mt-2">
             {paid ? formatCurrency(debtor.totalAmount) : formatCurrency(balance)}
           </p>
           <p className="text-sm opacity-80 mt-1">
-            {paid ? "Total collected" : "Remaining balance"}
+            {paid ? "ยอดรวมที่เก็บได้" : "ยอดคงเหลือ"}
           </p>
 
           {/* Progress Bar */}
           <div className="mt-4">
             <div className="flex justify-between text-sm mb-1 opacity-90">
-              <span>Paid {formatCurrency(debtor.amountPaid)}</span>
+              <span>ชำระแล้ว {formatCurrency(debtor.amountPaid)}</span>
               <span>{progress}%</span>
             </div>
             <div className="h-3 bg-white/30 rounded-full overflow-hidden">
@@ -192,35 +192,35 @@ export default function DebtorDetailPage() {
 
         {/* Details */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100 space-y-3">
-          <h2 className="text-base font-bold text-gray-700 mb-1">Loan Details</h2>
+          <h2 className="text-base font-bold text-gray-700 mb-1">รายละเอียดเงินกู้</h2>
           <DetailRow
             icon={<DollarSign size={18} className="text-blue-500" />}
-            label="Principal"
+            label="เงินต้น"
             value={formatCurrency(debtor.principalAmount)}
           />
           <DetailRow
             icon={<Percent size={18} className="text-purple-500" />}
-            label="Interest Rate"
+            label="อัตราดอกเบี้ย"
             value={`${debtor.interestRate}% ${getPeriodLabel(debtor.interestPeriod)}`}
           />
           <DetailRow
             icon={<DollarSign size={18} className="text-amber-500" />}
-            label="Total Interest"
+            label="ดอกเบี้ยรวม"
             value={formatCurrency(debtor.totalInterest)}
           />
           <DetailRow
             icon={<DollarSign size={18} className="text-green-500" />}
-            label="Total Amount"
+            label="ยอดรวมทั้งหมด"
             value={formatCurrency(debtor.totalAmount)}
           />
           <DetailRow
             icon={<Calendar size={18} className="text-blue-500" />}
-            label="Start Date"
+            label="วันที่เริ่มต้น"
             value={formatDate(debtor.startDate)}
           />
           <DetailRow
             icon={<Calendar size={18} className="text-red-500" />}
-            label="Due Date"
+            label="วันครบกำหนด"
             value={formatDate(debtor.dueDate)}
           />
           {debtor.notes && (
@@ -239,10 +239,10 @@ export default function DebtorDetailPage() {
             >
               <span className="flex items-center gap-2">
                 <Plus size={20} />
-                Record Payment
+                บันทึกการชำระเงิน
               </span>
               <span className="text-sm text-gray-400">
-                Balance: {formatCurrency(balance)}
+                ยอดคงเหลือ: {formatCurrency(balance)}
               </span>
             </button>
 
@@ -253,7 +253,7 @@ export default function DebtorDetailPage() {
               >
                 <div>
                   <label className="block text-sm font-bold text-gray-600 mb-1">
-                    Amount (₱)
+                    จำนวนเงิน (฿)
                   </label>
                   <input
                     type="number"
@@ -275,12 +275,12 @@ export default function DebtorDetailPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-600 mb-1">
-                    Note (Optional)
+                    หมายเหตุ (ถ้ามี)
                   </label>
                   <input
                     type="text"
                     className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-blue-400"
-                    placeholder="e.g. partial payment"
+                    placeholder="เช่น ชำระบางส่วน"
                     value={payNote}
                     onChange={(e) => setPayNote(e.target.value)}
                   />
@@ -291,13 +291,13 @@ export default function DebtorDetailPage() {
                     onClick={() => setShowAddPayment(false)}
                     className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-600 font-bold hover:bg-gray-50"
                   >
-                    Cancel
+                    ยกเลิก
                   </button>
                   <button
                     type="submit"
                     className="flex-1 py-3 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700"
                   >
-                    Save Payment
+                    บันทึกการชำระ
                   </button>
                 </div>
               </form>
@@ -308,11 +308,11 @@ export default function DebtorDetailPage() {
         {/* Payment History */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
           <h2 className="text-base font-bold text-gray-700 mb-3">
-            Payment History ({payments.length})
+            ประวัติการชำระเงิน ({payments.length})
           </h2>
           {payments.length === 0 ? (
             <p className="text-gray-400 text-sm text-center py-4">
-              No payments recorded yet
+              ยังไม่มีประวัติการชำระเงิน
             </p>
           ) : (
             payments.map((p) => (
@@ -349,22 +349,22 @@ export default function DebtorDetailPage() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Debtor?</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">ลบลูกหนี้?</h3>
             <p className="text-gray-500 mb-5">
-              This will permanently delete <strong>{debtor.name}</strong> and all payment records.
+              การลบนี้จะลบ <strong>{debtor.name}</strong> และประวัติการชำระเงินทั้งหมดอย่างถาวร
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="flex-1 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold text-lg hover:bg-gray-50"
               >
-                Cancel
+                ยกเลิก
               </button>
               <button
                 onClick={handleDelete}
                 className="flex-1 py-3.5 rounded-xl bg-red-600 text-white font-bold text-lg hover:bg-red-700"
               >
-                Delete
+                ลบ
               </button>
             </div>
           </div>
