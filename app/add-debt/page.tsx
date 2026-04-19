@@ -6,7 +6,9 @@ import { ChevronLeft, Save, Calculator, CalendarCheck, AlertTriangle } from "luc
 import {
   calculateInterest,
   calculateTotalRounds,
+  calculateRoundsFromMonths,
   calculateDueDate,
+  daysPerPeriod,
   getPeriodLabel,
   formatCurrency,
   formatDate,
@@ -33,6 +35,8 @@ function AddDebtForm() {
   const isEditing = Boolean(editId);
   const today = new Date().toISOString().split("T")[0];
 
+  type PaymentMode = "per-round" | "by-months";
+
   const [form, setForm] = useState({
     name: prefilledName,
     principalAmount: "",
@@ -40,7 +44,9 @@ function AddDebtForm() {
     interestRate: "",
     interestType: "percent" as InterestType,
     interestPeriod: "monthly" as InterestPeriod,
+    paymentMode: "per-round" as PaymentMode,
     paymentPerRound: "",
+    durationMonths: "",
     notes: "",
   });
 
@@ -62,6 +68,7 @@ function AddDebtForm() {
     if (!editId) return;
     const d = getDebtor(editId);
     if (d) {
+      const months = Math.max(1, Math.round(d.totalRounds * daysPerPeriod(d.interestPeriod) / 30));
       setForm({
         name: d.name,
         principalAmount: String(d.principalAmount),
@@ -69,7 +76,9 @@ function AddDebtForm() {
         interestRate: String(d.interestRate),
         interestType: d.interestType ?? "percent",
         interestPeriod: d.interestPeriod,
-        paymentPerRound: String(d.paymentPerRound),
+        paymentMode: "by-months",
+        paymentPerRound: "",
+        durationMonths: String(months),
         notes: d.notes ?? "",
       });
     }
@@ -83,8 +92,20 @@ function AddDebtForm() {
 
     if (!isNaN(principal) && principal > 0 && !isNaN(rate) && rate >= 0 && form.startDate) {
       const { totalInterest, totalAmount } = calculateInterest(principal, rate, form.interestType);
-      if (!isNaN(ppr) && ppr > 0) {
-        const totalRounds = calculateTotalRounds(principal, ppr);
+
+      let totalRounds = 0;
+      if (form.paymentMode === "by-months") {
+        const months = parseFloat(form.durationMonths);
+        if (!isNaN(months) && months > 0) {
+          totalRounds = calculateRoundsFromMonths(months, form.interestPeriod);
+        }
+      } else {
+        if (!isNaN(ppr) && ppr > 0) {
+          totalRounds = calculateTotalRounds(principal, ppr);
+        }
+      }
+
+      if (totalRounds > 0) {
         const netPerRound = parseFloat((totalAmount / totalRounds).toFixed(2));
         const dueDate = calculateDueDate(form.startDate, totalRounds, form.interestPeriod);
         setPreview({ totalInterest, totalAmount, totalRounds, netPerRound, dueDate });
@@ -94,7 +115,7 @@ function AddDebtForm() {
     } else {
       setPreview(null);
     }
-  }, [form.principalAmount, form.interestRate, form.interestType, form.startDate, form.interestPeriod, form.paymentPerRound]);
+  }, [form.principalAmount, form.interestRate, form.interestType, form.startDate, form.interestPeriod, form.paymentMode, form.paymentPerRound, form.durationMonths]);
 
   function validate(): boolean {
     const e: Record<string, string> = {};
@@ -104,8 +125,13 @@ function AddDebtForm() {
     const r = parseFloat(form.interestRate);
     if (!form.interestRate || isNaN(r) || r < 0) e.interestRate = "กรุณาใส่ดอกเบี้ยที่ถูกต้อง";
     if (!form.startDate) e.startDate = "กรุณาเลือกวันที่เริ่มต้น";
-    const ppr = parseFloat(form.paymentPerRound);
-    if (!form.paymentPerRound || isNaN(ppr) || ppr <= 0) e.paymentPerRound = "กรุณาใส่จำนวนเงินที่เก็บต่อรอบ";
+    if (form.paymentMode === "per-round") {
+      const ppr = parseFloat(form.paymentPerRound);
+      if (!form.paymentPerRound || isNaN(ppr) || ppr <= 0) e.paymentPerRound = "กรุณาใส่จำนวนเงินที่เก็บต่อรอบ";
+    } else {
+      const m = parseFloat(form.durationMonths);
+      if (!form.durationMonths || isNaN(m) || m <= 0) e.durationMonths = "กรุณาใส่จำนวนเดือน";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -137,7 +163,9 @@ function AddDebtForm() {
     const rate = parseFloat(form.interestRate);
     const ppr = parseFloat(form.paymentPerRound);
     const { totalInterest, totalAmount } = calculateInterest(principal, rate, form.interestType);
-    const totalRounds = calculateTotalRounds(principal, ppr);
+    const totalRounds = form.paymentMode === "by-months"
+      ? calculateRoundsFromMonths(parseFloat(form.durationMonths), form.interestPeriod)
+      : calculateTotalRounds(principal, ppr);
     const netPerRound = parseFloat((totalAmount / totalRounds).toFixed(2));
     const dueDate = calculateDueDate(form.startDate, totalRounds, form.interestPeriod);
     const now = new Date().toISOString();
@@ -338,20 +366,68 @@ function AddDebtForm() {
           </div>
         </div>
 
-        {/* เก็บต่อรอบ */}
+        {/* ตั้งยอดเก็บ */}
         <div>
-          <label className="block text-base font-bold text-gray-700 mb-2">เก็บเงินต่อรอบ (฿) *</label>
-          <input
-            type="number" inputMode="decimal" className={inputCls("paymentPerRound")}
-            placeholder="เช่น 1500"
-            value={form.paymentPerRound}
-            onChange={(e) => set("paymentPerRound", e.target.value)}
-            min="0.01" step="0.01"
-          />
-          {errors.paymentPerRound && <p className="text-red-500 text-sm mt-1">{errors.paymentPerRound}</p>}
-          <p className="text-xs text-gray-400 mt-1">
-            ระบุเงินต้นที่ต้องการเก็บต่อรอบ ระบบจะเฉลี่ยดอกเบี้ยรวมในแต่ละรอบให้อัตโนมัติ
-          </p>
+          <label className="block text-base font-bold text-gray-700 mb-2">ตั้งยอดเก็บ *</label>
+
+          {/* Payment mode toggle */}
+          <div className="flex rounded-xl border-2 border-gray-200 overflow-hidden mb-3">
+            <button
+              type="button"
+              onClick={() => { set("paymentMode", "per-round"); set("durationMonths", ""); }}
+              className={`flex-1 py-2.5 text-base font-bold transition-colors ${
+                form.paymentMode === "per-round"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-500 hover:bg-blue-50"
+              }`}
+            >
+              ฿ ต่อรอบ
+            </button>
+            <button
+              type="button"
+              onClick={() => { set("paymentMode", "by-months"); set("paymentPerRound", ""); }}
+              className={`flex-1 py-2.5 text-base font-bold transition-colors ${
+                form.paymentMode === "by-months"
+                  ? "bg-green-600 text-white"
+                  : "bg-white text-gray-500 hover:bg-green-50"
+              }`}
+            >
+              📅 ตามเดือน
+            </button>
+          </div>
+
+          {form.paymentMode === "per-round" ? (
+            <>
+              <input
+                type="number" inputMode="decimal" className={inputCls("paymentPerRound")}
+                placeholder="เช่น 1500"
+                value={form.paymentPerRound}
+                onChange={(e) => set("paymentPerRound", e.target.value)}
+                min="0.01" step="0.01"
+              />
+              {errors.paymentPerRound && <p className="text-red-500 text-sm mt-1">{errors.paymentPerRound}</p>}
+              <p className="text-xs text-gray-400 mt-1">
+                ระบุเงินต้นที่ต้องการเก็บต่อรอบ ระบบจะเฉลี่ยดอกเบี้ยรวมในแต่ละรอบให้อัตโนมัติ
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number" inputMode="decimal" className={`flex-1 ${inputCls("durationMonths")}`}
+                  placeholder="เช่น 3"
+                  value={form.durationMonths}
+                  onChange={(e) => set("durationMonths", e.target.value)}
+                  min="1" step="1"
+                />
+                <span className="text-lg font-bold text-gray-600 flex-shrink-0">เดือน</span>
+              </div>
+              {errors.durationMonths && <p className="text-red-500 text-sm mt-1">{errors.durationMonths}</p>}
+              <p className="text-xs text-gray-400 mt-1">
+                ระบบคำนวณจำนวนรอบและเงินต่อรอบจากจำนวนเดือนและวิธีทวงที่เลือก
+              </p>
+            </>
+          )}
         </div>
 
         {/* หมายเหตุ */}
@@ -389,6 +465,11 @@ function AddDebtForm() {
                   <span className="font-bold text-sm">ตารางการทวง ({getPeriodLabel(form.interestPeriod)})</span>
                 </div>
                 <PRow label="จำนวนรอบทั้งหมด" value={`${preview.totalRounds} รอบ`} large />
+                {form.paymentMode === "by-months" && (
+                  <p className="text-xs text-blue-300">
+                    {form.durationMonths} เดือน × ทวง{getPeriodLabel(form.interestPeriod).replace("ทวง", "")} = {preview.totalRounds} รอบ
+                  </p>
+                )}
                 <div className="bg-blue-600/50 rounded-xl p-3 mt-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-blue-200">เก็บต่อรอบ (รวมดอกเบี้ย)</span>

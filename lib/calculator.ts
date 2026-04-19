@@ -65,6 +65,12 @@ export function daysPerPeriod(period: InterestPeriod): number {
   }
 }
 
+/** จำนวนรอบจากจำนวนเดือน = ceil(เดือน × 30 / วันต่อรอบ) */
+export function calculateRoundsFromMonths(months: number, period: InterestPeriod): number {
+  if (months <= 0) return 0;
+  return Math.ceil((months * 30) / daysPerPeriod(period));
+}
+
 /**
  * คำนวณวันครบกำหนดอัตโนมัติ
  * = วันเริ่มต้น + (จำนวนรอบ × วันต่อรอบ)

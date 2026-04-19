@@ -16,12 +16,12 @@ export default function SummaryCard({
   bgClass = "bg-blue-50",
 }: SummaryCardProps) {
   return (
-    <div className={`rounded-2xl p-4 ${bgClass} flex items-center gap-4 shadow-sm`}>
-      <div className={`p-3 rounded-xl bg-white shadow-sm ${colorClass}`}>{icon}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-500 font-medium truncate">{label}</p>
-        <p className={`text-xl font-bold ${colorClass} truncate`}>{value}</p>
+    <div className={`rounded-2xl p-4 ${bgClass} shadow-sm`}>
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`${colorClass} opacity-80`}>{icon}</div>
+        <p className="text-xs text-gray-500 font-semibold leading-tight">{label}</p>
       </div>
+      <p className={`text-lg font-extrabold ${colorClass} leading-tight break-all`}>{value}</p>
     </div>
   );
 }
