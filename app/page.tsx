@@ -23,7 +23,7 @@ import SummaryCard from "@/components/SummaryCard";
 import DebtorCard from "@/components/DebtorCard";
 import { getDebtors, getSummary } from "@/lib/store";
 import { formatCurrency, isOverdue, isDueSoon } from "@/lib/calculator";
-import { isNotifSupported, getPermission, requestPermission, checkAndNotify } from "@/lib/notifications";
+import { isNotifSupported, getPermission, requestPermission, checkAndNotify, registerPeriodicSync } from "@/lib/notifications";
 import type { Debtor, DebtSummary } from "@/types";
 import Link from "next/link";
 
@@ -48,6 +48,7 @@ export default function DashboardPage() {
       setNotifPermission(perm);
       if (perm === "granted") {
         checkAndNotify(loaded);
+        registerPeriodicSync(loaded);
       }
     }
   }, []);
@@ -57,6 +58,7 @@ export default function DashboardPage() {
     setNotifPermission(perm);
     if (perm === "granted") {
       checkAndNotify(debtors);
+      registerPeriodicSync(debtors);
     }
   }
 

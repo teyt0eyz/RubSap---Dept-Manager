@@ -7,8 +7,13 @@ import {
   calculateDueDate,
   getNextPaymentDate,
 } from "@/lib/calculator";
+import { saveDebtorsToIDB } from "@/lib/idb";
 
 const STORAGE_KEY = "rubsap_data";
+
+function syncIDB(state: AppState) {
+  saveDebtorsToIDB(state.debtors).catch(() => {});
+}
 
 function getDefaultState(): AppState {
   return { debtors: [], payments: [] };
@@ -44,12 +49,14 @@ export function addDebtor(debtor: Debtor): void {
   const state = loadState();
   state.debtors.push(debtor);
   saveState(state);
+  syncIDB(state);
 }
 
 export function updateDebtor(updated: Debtor): void {
   const state = loadState();
   state.debtors = state.debtors.map((d) => (d.id === updated.id ? updated : d));
   saveState(state);
+  syncIDB(state);
 }
 
 export function deleteDebtor(id: string): void {
@@ -57,6 +64,7 @@ export function deleteDebtor(id: string): void {
   state.debtors = state.debtors.filter((d) => d.id !== id);
   state.payments = state.payments.filter((p) => p.debtorId !== id);
   saveState(state);
+  syncIDB(state);
 }
 
 // ── เพิ่มยอดกู้ ───────────────────────────────────────────────────────────────
@@ -117,6 +125,7 @@ export function addMoreLoan(
   debtor.updatedAt = new Date().toISOString();
 
   saveState(state);
+  syncIDB(state);
 }
 
 // ── Payments ──────────────────────────────────────────────────────────────────
@@ -137,6 +146,7 @@ export function addPayment(payment: Payment): void {
     debtor.updatedAt = new Date().toISOString();
   }
   saveState(state);
+  syncIDB(state);
 }
 
 export function deletePayment(paymentId: string): void {
@@ -153,6 +163,7 @@ export function deletePayment(paymentId: string): void {
   }
   state.payments = state.payments.filter((p) => p.id !== paymentId);
   saveState(state);
+  syncIDB(state);
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────

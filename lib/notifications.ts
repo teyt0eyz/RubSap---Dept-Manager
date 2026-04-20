@@ -2,6 +2,7 @@
 
 import type { Debtor } from "@/types";
 import { getNextPaymentDate, calculateRoundsPaid, formatCurrency } from "@/lib/calculator";
+import { saveDebtorsToIDB } from "@/lib/idb";
 
 export function isNotifSupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
@@ -63,6 +64,22 @@ function markSent(key: string) {
     if (map[k] < cutoff) delete map[k];
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+}
+
+// ── Periodic Background Sync registration ─────────────────────────────────────
+
+export async function registerPeriodicSync(debtors: Debtor[]): Promise<void> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+  await saveDebtorsToIDB(debtors);
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if ("periodicSync" in reg) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (reg as any).periodicSync.register("check-payments", {
+        minInterval: 60 * 60 * 1000,
+      });
+    }
+  } catch { /* periodicSync not supported on this device */ }
 }
 
 // ── Main check ────────────────────────────────────────────────────────────────
