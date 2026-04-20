@@ -23,6 +23,7 @@ import SummaryCard from "@/components/SummaryCard";
 import DebtorCard from "@/components/DebtorCard";
 import { getDebtors, getSummary } from "@/lib/store";
 import { formatCurrency, isOverdue, isDueSoon } from "@/lib/calculator";
+import { isNotifSupported, getPermission, requestPermission, checkAndNotify } from "@/lib/notifications";
 import type { Debtor, DebtSummary } from "@/types";
 import Link from "next/link";
 
@@ -36,11 +37,28 @@ export default function DashboardPage() {
     overdueCount: 0,
     dueSoonCount: 0,
   });
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>("default");
 
   useEffect(() => {
-    setDebtors(getDebtors());
+    const loaded = getDebtors();
+    setDebtors(loaded);
     setSummary(getSummary());
+    if (isNotifSupported()) {
+      const perm = getPermission();
+      setNotifPermission(perm);
+      if (perm === "granted") {
+        checkAndNotify(loaded);
+      }
+    }
   }, []);
+
+  async function handleEnableNotif() {
+    const perm = await requestPermission();
+    setNotifPermission(perm);
+    if (perm === "granted") {
+      checkAndNotify(debtors);
+    }
+  }
 
   const overdueDebtors = debtors.filter(
     (d) => isOverdue(d.dueDate) && d.amountPaid < d.totalAmount
@@ -80,6 +98,34 @@ export default function DashboardPage() {
     <>
       <Header title="หน้าหลัก" />
       <div className="px-4 pt-5 space-y-5">
+
+        {/* Notification banner */}
+        {isNotifSupported() && notifPermission === "default" && (
+          <button
+            onClick={handleEnableNotif}
+            className="w-full flex items-center gap-3 bg-blue-700 text-white rounded-2xl px-4 py-3.5 shadow-md active:bg-blue-800 transition-colors text-left"
+          >
+            <span className="text-2xl flex-shrink-0">🔔</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-base leading-tight">เปิดการแจ้งเตือน</p>
+              <p className="text-xs text-blue-200 mt-0.5">แจ้งเตือนเมื่อถึงวันทวงเงินและหนี้เกินกำหนด</p>
+            </div>
+            <span className="text-blue-300 text-sm font-semibold flex-shrink-0">เปิด »</span>
+          </button>
+        )}
+        {isNotifSupported() && notifPermission === "granted" && (
+          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+            <span className="text-lg">🔔</span>
+            <p className="text-sm font-semibold text-green-700">เปิดการแจ้งเตือนแล้ว — จะแจ้งเตือนเมื่อถึงวันทวงเงิน</p>
+          </div>
+        )}
+        {isNotifSupported() && notifPermission === "denied" && (
+          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+            <span className="text-lg">🔕</span>
+            <p className="text-sm text-gray-500">การแจ้งเตือนถูกบล็อก — เปิดใน ตั้งค่า &gt; การแจ้งเตือน ของโทรศัพท์</p>
+          </div>
+        )}
+
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-3">
           <SummaryCard
